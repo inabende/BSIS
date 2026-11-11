@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.3 (draft) |
+| **Version** | 0.4 (draft) |
 | **Date** | 2026-11-11 |
 | **Related** | [01-requirements.md](01-requirements.md) |
 
@@ -47,7 +47,7 @@ flowchart LR
 
 The Django project is split into apps, each owning one area:
 
-Built so far: `core`, `accounts`, `projects`, `samples` (Phase 1) and `smears` (Phase 2). The others arrive in later phases.
+Built so far: `core`, `accounts`, `projects`, `samples` (Phase 1), `smears` (Phase 2) and `qc` (Phase 3). The others arrive in later phases.
 
 ```mermaid
 flowchart TB
@@ -82,7 +82,7 @@ bsintegratedsystem/
 │   ├── projects/         # includes permissions.py: the single place for access rules
 │   ├── samples/
 │   ├── smears/           # smear types, slides, readings; dynamic.py + calculations.py
-│   ├── qc/               # Phase 3
+│   ├── qc/               # QC settings, final results; rules.py, services.py, access.py (blinding)
 │   ├── reports/          # Phase 4
 │   ├── imports/          # Phase 5
 │   └── audit/            # Phase 4+ (history pages already exist per record)
@@ -112,13 +112,17 @@ Each app keeps its tests in `apps/<app>/tests/`.
 | `/projects/<code>/results/` | All smear results in the project (filter by type, result, species) |
 | `/projects/<code>/slides/<id>/` · `edit/` · `history/` | Slide with its readings · edit slide details · history of slide and readings |
 | `/projects/<code>/slides/<id>/readings/<id>/edit/` | Edit a reading (recalculates) |
+| `/projects/<code>/slides/<id>/readings/new/` | Enter reader 2 or tie-breaker reading |
+| `/projects/<code>/slides/<id>/lock/` · `unlock/` | Approve and lock · unlock with reason |
+| `/projects/<code>/qc/review/` | Review queue: awaiting reader 2, tie-breaker, approval (bulk approve) |
+| `/projects/<code>/qc/settings/` | QC settings: readers per smear type, threshold, final rule |
 | `/admin/` | Administration (system admins only): users, sites, smear types and their fields |
 
 The project code appears in every address, and every page checks that the record really belongs to that project, so a user can't reach another project's data by editing the address.
 
 ## 4. Data model
 
-Built so far: USER, SITE, PROJECT, PROJECT_MEMBERSHIP, PARTICIPANT, SAMPLE (Phase 1); SMEAR_TYPE, FIELD_DEFINITION, PROJECT_SMEAR_TYPE, SLIDE, READING (Phase 2). Every one of them keeps a full change history. FINAL_RESULT arrives in Phase 3.
+Built so far: USER, SITE, PROJECT, PROJECT_MEMBERSHIP, PARTICIPANT, SAMPLE (Phase 1); SMEAR_TYPE, FIELD_DEFINITION, PROJECT_SMEAR_TYPE, SLIDE, READING (Phase 2); QC_SETTINGS, FINAL_RESULT (Phase 3). Every one of them keeps a full change history.
 
 ```mermaid
 erDiagram
@@ -136,6 +140,7 @@ erDiagram
     SLIDE ||--o{ READING : "read as"
     USER ||--o{ READING : reads
     SLIDE ||--o| FINAL_RESULT : "concludes in"
+    PROJECT ||--o| QC_SETTINGS : "compares readings with"
 
     PROJECT {
         string code UK
@@ -210,9 +215,17 @@ erDiagram
         bool is_positive
         string species
         decimal density_per_ul
-        json values
-        string rule_applied
+        decimal parasitaemia_pct
+        string rule_applied "e.g. 'Readers 1 and 2 agree; mean of their values'"
+        string readings_used "e.g. '1,2' or '3'"
+        bool had_discordance
+        json discordance_reasons
         bool locked
+        datetime locked_at
+    }
+    QC_SETTINGS {
+        int density_threshold_pct "default 50"
+        string final_rule "tiebreaker or closest_two"
     }
 ```
 
@@ -281,9 +294,24 @@ stateDiagram-v2
     Locked --> Final: unlock with reason (audited)
 ```
 
-Projects that use only one reader can be configured to go straight from the first reading to **Final**.
+Each project sets, **per smear type**, whether slides need 1 or 2 readers (QC settings page). Single-reader slides go straight from the first reading to **Final**. The number is copied onto each slide when it's recorded, so changing the setting doesn't affect slides already in progress.
 
-**Current state (Phase 2):** every slide is single-reader. Saving the first reading sets the slide to **Final**. Phase 3 adds second readers, discordance checks, tie-breakers and locking.
+After every reading is saved or edited, `apps/qc/services.py` (`evaluate_slide`) works out the slide's status and final result, using the rules in `apps/qc/rules.py`:
+
+| Readings present | Status | Final result |
+|---|---|---|
+| None | Pending | — |
+| Reader 1 only, single-reader slide | Final | Reader 1 |
+| Reader 1 only, double-reader slide | Reading (awaiting reader 2) | — |
+| Readers 1 + 2 agree | Final | Both negative: negative. Both positive: same species, **mean** density/parasitaemia. |
+| Readers 1 + 2 disagree | Discordant (awaiting tie-breaker) | — |
+| Readers 1 + 2 disagree, + reader 3 | Final | Project rule: **tie-breaker decides** (default), or **majority** positive/negative and species, with density = mean of the two closest readings |
+
+**Disagreement** means any of: positive vs negative; both positive but different species; or density (or parasitaemia) differing by more than the project's threshold, measured as |a − b| ÷ mean(a, b) × 100 (default 50%). The reasons are stored on the final result, so the disagreement stays visible after it's resolved. Types without a positive/negative result (e.g. hematology) aren't compared automatically.
+
+**Blinding:** while a slide is in *Reading* or *Discordant*, each reading's values are hidden from everyone except the person who read it, reviewers and system admins. That applies to the slide page, its history, the edit page and all result lists, which show the slide's status instead of reader 1's result. The same person can't read a slide twice.
+
+**Locking:** a reviewer approves a final result, from the slide page or several at once from the review queue, and it becomes **locked**. While locked, readings and slide details can't be edited and the final result isn't recalculated. Unlocking requires a written reason, kept in the history.
 
 ### 5.2 Importing existing study data
 
@@ -319,7 +347,10 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | Register participants and samples | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Close / archive a project | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Reopen a closed project | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Approve/lock results (Phase 3) | ✅ | | | ✅ | | |
+| Enter reader 2 / tie-breaker readings | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Change QC settings (readers required, threshold, rule) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| See readings while a slide is read blind | ✅ | own reading only | own reading only | ✅ | ❌ | ❌ |
+| Approve/lock and unlock final results | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
 
 - A closed or archived project is read-only for everyone. Only a system admin can reopen it.
 - A project always keeps at least one lead. The last lead can't be removed or demoted.
@@ -379,7 +410,12 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | D11 | Built-in types and fields are created by a database migration | Every installation gets identical definitions; field keys used by calculations can't be renamed in admin | 2026-11-11 |
 | D12 | Smear types and fields are deactivated, never deleted | Saved readings refer to them; deleting would orphan data | 2026-11-11 |
 | D13 | A slide's smear type and ID are fixed once recorded | Its result fields depend on the type; the ID is on the physical slide label | 2026-11-11 |
-| D14 | Slide and first reading are recorded on one page | Fewer steps for the common case; Phase 3 adds later readers from the slide page | 2026-11-11 |
+| D14 | Slide and first reading are recorded on one page | Fewer steps for the common case; later readers add theirs from the slide page | 2026-11-11 |
+| D15 | Every slide has a FinalResult (even single-reader); lists show it, never reader 1 directly | One place for "the result"; prevents leaking blinded readings into lists | 2026-11-11 |
+| D16 | Readers required is set per smear type per project and copied onto each slide | e.g. double-read thick smears but single-read thin; setting changes don't disturb slides in progress | 2026-11-11 |
+| D17 | Density disagreement = difference as % of the mean | Symmetric (order of readers doesn't matter) and easy to explain; threshold configurable | 2026-11-11 |
+| D18 | Only reviewers and system admins lock/unlock; leads can't | Separation of duties: the people producing results don't approve them | 2026-11-11 |
+| D19 | Locked results are never recalculated | An approved result can only change through an audited unlock | 2026-11-11 |
 
 ## 9. Change log
 
@@ -388,3 +424,4 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | 0.1 | 2026-11-11 | Initial architecture |
 | 0.2 | 2026-11-11 | Phase 1 built: added Site entity, permission matrix, web addresses, configuration variables, decisions D5–D9 |
 | 0.3 | 2026-11-11 | Phase 2 built: smear type data model, result-saving flow, calculation table, web addresses, decisions D10–D14 |
+| 0.4 | 2026-11-11 | Phase 3 built: QC data model, slide status/final-result table, blinding and locking rules, permission rows, web addresses, decisions D15–D19 |

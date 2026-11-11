@@ -10,6 +10,9 @@
     {% if no_types %}
       <div class="alert alert-warning">This project has no smear types switched on. A project lead can choose them under <a href="{% url 'projects:update' project.code %}">Edit project</a>.</div>
     {% else %}
+    {% if double_read_types %}
+      <div class="alert alert-light border small py-2"><i class="bi bi-people"></i> This project double-reads <strong>{{ double_read_types|join:", " }}</strong>. You're entering reader 1's result; a second reader enters theirs from the slide page.</div>
+    {% endif %}
     <form method="post" novalidate>{% csrf_token %}
       <div class="row g-4">
         <div class="col-lg-5">

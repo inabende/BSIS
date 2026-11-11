@@ -6,16 +6,63 @@
   <div>
     <h1 class="h3 mb-1"><i class="bi bi-file-earmark-medical"></i> Slide {{ slide }}</h1>
     <span class="badge text-bg-light border">{{ slide.smear_type.name }}</span>
-    <span class="badge {% if slide.status == 'final' %}text-bg-primary{% elif slide.status == 'discordant' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ slide.get_status_display }}</span>
+    <span class="badge text-bg-light border">{% if slide.readers_required == 2 %}Double reading{% else %}Single reading{% endif %}</span>
+    {% if final.locked %}<span class="badge text-bg-primary"><i class="bi bi-lock-fill"></i> Approved and locked</span>
+    {% else %}<span class="badge {% if slide.status == 'final' %}text-bg-secondary{% elif slide.status == 'discordant' %}text-bg-warning{% else %}text-bg-info{% endif %}">{{ slide.get_status_display }}</span>{% endif %}
   </div>
   <div class="btn-group">
-    {% if perms_project.can_enter_data %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'smears:slide_update' project.code slide.pk %}"><i class="bi bi-pencil"></i> Edit slide</a>{% endif %}
+    {% if can_edit_slide %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'smears:slide_update' project.code slide.pk %}"><i class="bi bi-pencil"></i> Edit slide</a>{% endif %}
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'smears:slide_history' project.code slide.pk %}"><i class="bi bi-clock-history"></i> History</a>
   </div>
 </div>
 
+{# --- Where the slide stands ------------------------------------------- #}
+{% if slide.status == "reading" %}
+  <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div><i class="bi bi-eye-slash"></i> <strong>Awaiting the second independent reading.</strong> Reader 1's result is hidden from other readers until it's entered.</div>
+    {% if can_add_reading %}<a class="btn btn-brand btn-sm" href="{% url 'smears:reading_create' project.code slide.pk %}"><i class="bi bi-plus-lg"></i> Enter reader 2 result</a>{% endif %}
+  </div>
+{% elif slide.status == "discordant" %}
+  <div class="alert alert-warning">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div><i class="bi bi-exclamation-triangle"></i> <strong>Readers 1 and 2 disagree.</strong> A third, tie-breaker reading is needed. Results stay hidden from other readers until then.</div>
+      {% if can_add_reading %}<a class="btn btn-brand btn-sm" href="{% url 'smears:reading_create' project.code slide.pk %}"><i class="bi bi-plus-lg"></i> Enter tie-breaker result</a>{% endif %}
+    </div>
+    {% if current_discordance %}<ul class="mb-0 mt-2 small">{% for reason in current_discordance %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+{% endif %}
+
 <div class="row g-4">
   <div class="col-lg-4">
+    {% if final %}
+    <div class="card mb-4 border-start border-4 {% if final.locked %}border-primary{% else %}border-secondary{% endif %}"><div class="card-body">
+      <h2 class="h5 mb-3">Final result</h2>
+      <div class="d-flex flex-wrap gap-4 mb-3">
+        {% if final.is_positive is not None %}
+        <div><div class="small text-muted">Result</div><div class="result-value {% if final.is_positive %}text-danger{% else %}text-success{% endif %}">{{ final.result_label }}</div></div>
+        {% endif %}
+        {% if final.species %}<div><div class="small text-muted">Species</div><div class="result-value fst-italic">{{ final.get_species_display }}</div></div>{% endif %}
+        {% if final.is_positive and final.density_per_ul is not None %}<div><div class="small text-muted">Density</div><div class="result-value">{{ final.density_per_ul|floatformat:"0g" }} <small class="fs-6">/µL</small></div></div>{% endif %}
+        {% if final.is_positive and final.parasitaemia_pct is not None %}<div><div class="small text-muted">Parasitaemia</div><div class="result-value">{{ final.parasitaemia_pct|floatformat:"-3" }} <small class="fs-6">%</small></div></div>{% endif %}
+      </div>
+      <p class="small mb-2"><strong>How decided:</strong> {{ final.rule_applied }}.<br><strong>Readings used:</strong> {{ final.readings_used|cut:","|make_list|join:", " }}</p>
+      {% if final.had_discordance %}
+        <div class="small mb-2"><strong class="text-warning-emphasis"><i class="bi bi-exclamation-diamond"></i> Readers 1 and 2 disagreed:</strong>
+          <ul class="mb-0">{% for reason in final.discordance_reasons %}<li>{{ reason }}</li>{% endfor %}</ul></div>
+      {% endif %}
+      {% if final.locked %}
+        <p class="small mb-2 text-primary"><i class="bi bi-lock-fill"></i> Approved and locked by {{ final.locked_by }} on {{ final.locked_at|date:"d M Y, H:i" }}. Readings can't be changed unless a reviewer unlocks it.</p>
+        {% if can_unlock %}<a class="btn btn-outline-danger btn-sm" href="{% url 'qc:unlock' project.code slide.pk %}"><i class="bi bi-unlock"></i> Unlock…</a>{% endif %}
+      {% elif can_lock %}
+        <form method="post" action="{% url 'qc:lock' project.code slide.pk %}" class="mt-2">{% csrf_token %}
+          <button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-lock"></i> Approve and lock</button>
+        </form>
+      {% else %}
+        <p class="small text-muted mb-0">Awaiting approval by a data reviewer.</p>
+      {% endif %}
+    </div></div>
+    {% endif %}
+
     <div class="card"><div class="card-body">
       <h2 class="h5 mb-3">Slide</h2>
       <dl class="dl-grid">
@@ -31,41 +78,40 @@
   </div>
 
   <div class="col-lg-8">
-    {% for reading, rows in readings %}
+    {% for item in readings %}
+    {% with reading=item.reading %}
     <div class="card mb-4"><div class="card-body">
       <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
-          <h2 class="h5 mb-1">Reader {{ reading.reader_number }}{% if reading.reader_number == 3 %} (tie-breaker){% endif %}: {{ reading.reader }}</h2>
+          <h2 class="h5 mb-1">{% if reading.reader_number == 3 %}Tie-breaker (reader 3){% else %}Reader {{ reading.reader_number }}{% endif %}: {{ reading.reader }}</h2>
           <div class="small text-muted">Read {{ reading.read_at|date:"d M Y, H:i" }}{% if reading.site %} at {{ reading.site.name }}{% endif %}{% if reading.microscope %} · microscope {{ reading.microscope }}{% endif %}</div>
         </div>
-        {% if perms_project.can_enter_data %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'smears:reading_update' project.code slide.pk reading.pk %}"><i class="bi bi-pencil"></i> Edit reading</a>{% endif %}
+        {% if item.can_edit %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'smears:reading_update' project.code slide.pk reading.pk %}"><i class="bi bi-pencil"></i> Edit reading</a>{% endif %}
       </div>
 
-      <div class="row g-3 mb-3">
-        {% if reading.is_positive is not None %}
-        <div class="col-auto"><div class="small text-muted">Result</div>
-          <div class="result-value {% if reading.is_positive %}text-danger{% else %}text-success{% endif %}">{{ reading.result_label }}</div></div>
-        {% endif %}
-        {% if reading.species %}
-        <div class="col-auto"><div class="small text-muted">Species</div><div class="result-value fst-italic">{{ reading.get_species_display }}</div></div>
-        {% endif %}
-        {% if reading.density_per_ul is not None %}
-        <div class="col-auto"><div class="small text-muted">Parasite density</div><div class="result-value">{{ reading.density_per_ul|floatformat:"0g" }} <small class="fs-6">/µL</small></div></div>
-        {% endif %}
-        {% if reading.parasitaemia_pct is not None %}
-        <div class="col-auto"><div class="small text-muted">Parasitaemia</div><div class="result-value">{{ reading.parasitaemia_pct|floatformat:"-3" }} <small class="fs-6">%</small></div></div>
-        {% endif %}
-      </div>
-
-      <table class="table table-sm mb-0">
-        <tbody>
-        {% for label, value, unit in rows %}
-          <tr><th class="fw-normal text-muted" style="width: 45%">{{ label }}</th><td>{{ value|linebreaksbr }}{% if unit and value != "" %} {{ unit }}{% endif %}</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
-      {% if reading.comments %}<p class="mt-3 mb-0 small"><strong>Comments:</strong> {{ reading.comments|linebreaksbr }}</p>{% endif %}
+      {% if item.visible %}
+        <div class="row g-3 mb-3">
+          {% if reading.is_positive is not None %}
+          <div class="col-auto"><div class="small text-muted">Result</div>
+            <div class="result-value {% if reading.is_positive %}text-danger{% else %}text-success{% endif %}">{{ reading.result_label }}</div></div>
+          {% endif %}
+          {% if reading.species %}<div class="col-auto"><div class="small text-muted">Species</div><div class="result-value fst-italic">{{ reading.get_species_display }}</div></div>{% endif %}
+          {% if reading.density_per_ul is not None %}<div class="col-auto"><div class="small text-muted">Parasite density</div><div class="result-value">{{ reading.density_per_ul|floatformat:"0g" }} <small class="fs-6">/µL</small></div></div>{% endif %}
+          {% if reading.parasitaemia_pct is not None %}<div class="col-auto"><div class="small text-muted">Parasitaemia</div><div class="result-value">{{ reading.parasitaemia_pct|floatformat:"-3" }} <small class="fs-6">%</small></div></div>{% endif %}
+        </div>
+        <table class="table table-sm mb-0">
+          <tbody>
+          {% for label, value, unit in item.rows %}
+            <tr><th class="fw-normal text-muted" style="width: 45%">{{ label }}</th><td>{{ value|linebreaksbr }}{% if unit and value != "" %} {{ unit }}{% endif %}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% if reading.comments %}<p class="mt-3 mb-0 small"><strong>Comments:</strong> {{ reading.comments|linebreaksbr }}</p>{% endif %}
+      {% else %}
+        <p class="text-muted mb-0"><i class="bi bi-eye-slash"></i> Result hidden: this slide is being read blind. It will be shown once all required readings are in.</p>
+      {% endif %}
     </div></div>
+    {% endwith %}
     {% empty %}
     <div class="card"><div class="card-body text-muted">No readings yet.</div></div>
     {% endfor %}

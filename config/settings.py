@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.projects",
     "apps.samples",
     "apps.smears",
+    "apps.qc",
 ]
 
 MIDDLEWARE = [

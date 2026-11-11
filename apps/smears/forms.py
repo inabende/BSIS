@@ -80,8 +80,10 @@ class ReadingForm(BootstrapFormMixin, forms.ModelForm):
             "comments": forms.Textarea(attrs={"rows": 2}),
         }
 
-    def __init__(self, *args, project, user, **kwargs):
+    def __init__(self, *args, project, user, exclude_reader_ids=(), **kwargs):
         super().__init__(*args, **kwargs)
+        # Readers who already read this slide can't read it again (independent readings).
+        self.exclude_reader_ids = set(exclude_reader_ids)
         readers = User.objects.filter(
             is_active=True, memberships__project=project, memberships__role__in=[Role.LEAD, Role.READER]
         )
@@ -90,11 +92,11 @@ class ReadingForm(BootstrapFormMixin, forms.ModelForm):
         if self.instance.pk:
             # Keep the original reader selectable even if they've since left the project.
             readers = readers | User.objects.filter(pk=self.instance.reader_id)
-        self.fields["reader"].queryset = readers.distinct()
+        self.fields["reader"].queryset = readers.exclude(pk__in=self.exclude_reader_ids).distinct()
         self.fields["reader"].label_from_instance = lambda u: f"{u} ({u.username})"
         self.fields["site"].queryset = project.sites.all()
         self.fields["site"].label = "Reading site"
-        if not self.instance.pk:
+        if not self.instance.pk and user.pk not in self.exclude_reader_ids:
             self.initial.setdefault("reader", user.pk)
             self.initial.setdefault("read_at", timezone.localtime().replace(second=0, microsecond=0))
 
@@ -136,11 +138,18 @@ def save_reading(reading_form, values_form, results, slide, user, reader_number=
     reading.density_per_ul = results["density_per_ul"]
     reading.parasitaemia_pct = results["parasitaemia_pct"]
     reading.save()
-    if slide.status != Slide.Status.FINAL:
-        # Single-reader workflow for now; Phase 3 adds second readers and tie-breaks.
-        slide.status = Slide.Status.FINAL
-        slide.save(update_fields=["status", "updated_at"])
+    from apps.qc.services import evaluate_slide
+
+    evaluate_slide(slide)
     return reading
+
+
+def other_reader_ids(slide, reading=None):
+    """Users who read this slide, apart from `reading` itself."""
+    qs = slide.readings.all()
+    if reading is not None and reading.pk:
+        qs = qs.exclude(pk=reading.pk)
+    return list(qs.values_list("reader_id", flat=True))
 
 
 def _json_safe(data):

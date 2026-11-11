@@ -1,11 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Edit reading – {{ slide }}{% endblock %}
-{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb_participant=slide.sample.participant crumb="Edit reading" %}{% endblock %}
+{% block title %}{% if reading %}Edit reading{% else %}Add reading{% endif %} – {{ slide }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb_participant=slide.sample.participant crumb=reading|yesno:"Edit reading,Add reading" %}{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-xl-9">
-    <h1 class="h4 mb-1">Edit reader {{ reading.reader_number }} result for slide {{ slide }}</h1>
-    <p class="text-muted">{{ smear_type.name }} · sample {{ slide.sample }} · participant {{ slide.sample.participant }}. Every change is kept in the slide's history.</p>
+    <h1 class="h4 mb-1">
+      {% if reading %}Edit {% else %}Enter {% endif %}{% if reader_number == 3 %}tie-breaker (reader 3){% else %}reader {{ reader_number }}{% endif %} result for slide {{ slide }}
+    </h1>
+    <p class="text-muted mb-2">{{ smear_type.name }} · sample {{ slide.sample }} · participant {{ slide.sample.participant }}.{% if reading %} Every change is kept in the slide's history.{% endif %}</p>
+    {% if not reading %}
+      <div class="alert alert-info py-2 small"><i class="bi bi-eye-slash"></i> Read the slide independently. Earlier readings are hidden, and the same person can't read a slide twice.</div>
+    {% endif %}
     <form method="post" novalidate>{% csrf_token %}
       <div class="row g-4">
         <div class="col-lg-5">
@@ -22,7 +27,7 @@
         </div>
       </div>
       <div class="d-flex gap-2 mt-4">
-        <button class="btn btn-brand" type="submit"><i class="bi bi-check-lg"></i> Save changes</button>
+        <button class="btn btn-brand" type="submit"><i class="bi bi-check-lg"></i> {% if reading %}Save changes{% else %}Save reading{% endif %}</button>
         <a class="btn btn-link" href="{% url 'smears:slide_detail' project.code slide.pk %}">Cancel</a>
       </div>
     </form>

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.3 (draft) |
+| **Version** | 0.4 (draft) |
 | **Date** | 2026-11-11 |
 | **Status** | Living document — updated as the system evolves |
 
@@ -110,6 +110,9 @@ These will be settled as we build:
 4. Does any project require compliance with a specific standard (e.g. GCLP, 21 CFR Part 11 e-signatures)?
 5. Formats of existing per-study spreadsheets to be imported.
 6. Should slide images be stored in a later version?
+7. At very low densities a small absolute difference is a large percentage (e.g. 16 vs 40/µL = 86%). Should the density check only apply above a minimum density, or use a different method (e.g. log ratio)?
+8. Hematology double readings aren't compared automatically (there's no positive/negative). Should differential counts be compared, and with what tolerance?
+9. Should project leads also be able to approve and lock results, or only data reviewers (current setting)?
 
 ## 7. Implementation status
 
@@ -126,7 +129,10 @@ These will be settled as we build:
 | FR-9 Admin-defined smear types and fields | ✅ Done via Administration → Smear types; see [03-admin-guide.md](03-admin-guide.md) | 2 |
 | FR-10 Calculations | ✅ Done, plus consistency checks (e.g. negative slide with parasites, differential ≠ 100%) | 2 |
 | FR-11 Slide ID, reader, date, microscope/site, comments | ✅ Done | 2 |
-| FR-12 – FR-15 Readers, discordance, locking | Planned | 3 |
+| FR-12 Independent, blinded reader 1 and 2 | ✅ Done; readers required set per smear type per project; the same person can't read a slide twice | 3 |
+| FR-13 Discordance flags with configurable threshold | ✅ Done (difference as % of the two readings' mean; default 50%) | 3 |
+| FR-14 Tie-breaker and final-result rule | ✅ Done: "tie-breaker decides" or "majority, mean of the two closest" | 3 |
+| FR-15 Reviewer approves and locks; unlock needs a reason | ✅ Done, including bulk approval from a review queue | 3 |
 | FR-16 – FR-18 Search, dashboards, export | Partly: per-project results list filtered by smear type, result and species is done; cross-project search planned | 4 |
 | FR-19 – FR-20 Import | Planned | 5 |
 | FR-21 Accounts, deactivate not delete | ✅ Done | 1 |
@@ -140,3 +146,4 @@ These will be settled as we build:
 | 0.1 | 2026-11-11 | Initial draft from first design discussion |
 | 0.2 | 2026-11-11 | Added implementation status after Phase 1 |
 | 0.3 | 2026-11-11 | Phase 2 status: smear types, result entry, calculations |
+| 0.4 | 2026-11-11 | Phase 3 status: double reading, discordance, tie-breaker, locking; open questions 7–9 |

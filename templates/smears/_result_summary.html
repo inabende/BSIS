@@ -1,11 +1,19 @@
-{# Compact result for a reading: badge + key number. Expects `reading`. #}
-{% if reading %}
-  {% if reading.is_positive is True %}<span class="badge text-bg-danger result-badge">Positive</span>
-  {% elif reading.is_positive is False %}<span class="badge text-bg-success result-badge">Negative</span>
+{# Compact result for a slide: its final result, or where it is in the QC workflow. Expects `slide`. #}
+{% with final=slide.final %}
+{% if final %}
+  {% if final.is_positive is True %}<span class="badge text-bg-danger result-badge">Positive</span>
+  {% elif final.is_positive is False %}<span class="badge text-bg-success result-badge">Negative</span>
   {% else %}<span class="badge text-bg-secondary result-badge">Recorded</span>{% endif %}
-  {% if reading.species %}<em class="ms-1">{{ reading.get_species_display }}</em>{% endif %}
-  {% if reading.is_positive and reading.density_per_ul is not None %}<span class="ms-1 text-nowrap">{{ reading.density_per_ul|floatformat:"0g" }}/µL</span>{% endif %}
-  {% if reading.is_positive and reading.parasitaemia_pct is not None %}<span class="ms-1 text-nowrap">{{ reading.parasitaemia_pct|floatformat:"-3" }}%</span>{% endif %}
+  {% if final.species %}<em class="ms-1">{{ final.get_species_display }}</em>{% endif %}
+  {% if final.is_positive and final.density_per_ul is not None %}<span class="ms-1 text-nowrap">{{ final.density_per_ul|floatformat:"0g" }}/µL</span>{% endif %}
+  {% if final.is_positive and final.parasitaemia_pct is not None %}<span class="ms-1 text-nowrap">{{ final.parasitaemia_pct|floatformat:"-3" }}%</span>{% endif %}
+  {% if final.locked %}<i class="bi bi-lock-fill text-primary ms-1" title="Approved and locked"></i>{% endif %}
+  {% if final.had_discordance %}<i class="bi bi-exclamation-diamond text-warning ms-1" title="Readers disagreed; settled by tie-breaker"></i>{% endif %}
+{% elif slide.status == "reading" %}
+  <span class="badge text-bg-info result-badge"><i class="bi bi-hourglass-split"></i> Awaiting reader 2</span>
+{% elif slide.status == "discordant" %}
+  <span class="badge text-bg-warning result-badge"><i class="bi bi-exclamation-triangle"></i> Awaiting tie-breaker</span>
 {% else %}
   <span class="text-muted">Not read</span>
 {% endif %}
+{% endwith %}

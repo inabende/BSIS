@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}QC settings – {{ project.code }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Quality control settings" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card"><div class="card-body p-4">
+      <h1 class="h4 mb-1"><i class="bi bi-sliders"></i> Quality control settings</h1>
+      <p class="text-muted small">Changes apply to slides recorded from now on. Slides already recorded keep the number of readers they started with.</p>
+      <form method="post" novalidate>{% csrf_token %}
+        {% include "core/_form.html" %}
+        <div class="small text-muted mb-3">
+          <strong>When are two readings "in agreement"?</strong> Both positive or both negative; if positive, the same species,
+          and density (or parasitaemia) within the threshold above. Hematology and custom types without a
+          positive/negative result aren't compared automatically.
+        </div>
+        <button class="btn btn-brand" type="submit">Save settings</button>
+        <a class="btn btn-link" href="{{ project.get_absolute_url }}">Cancel</a>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

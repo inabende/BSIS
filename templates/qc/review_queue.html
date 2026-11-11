@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Review queue – {{ project.code }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Review queue" %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0"><i class="bi bi-clipboard-check"></i> Review queue</h1>
+  {% if perms_project.can_manage %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'qc:settings' project.code %}"><i class="bi bi-sliders"></i> QC settings</a>{% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-4"><div class="card stat-card"><div class="card-body">
+    <div class="stat-value">{{ awaiting_second|length }}</div><div class="stat-label">Awaiting reader 2</div></div></div></div>
+  <div class="col-sm-4"><div class="card stat-card"><div class="card-body">
+    <div class="stat-value text-warning-emphasis">{{ awaiting_tiebreak|length }}</div><div class="stat-label">Awaiting tie-breaker</div></div></div></div>
+  <div class="col-sm-4"><div class="card stat-card"><div class="card-body">
+    <div class="stat-value">{{ awaiting_approval_total }}</div><div class="stat-label">Final, awaiting approval</div></div></div></div>
+</div>
+
+<div class="card mb-4"><div class="card-body">
+  <h2 class="h5">Awaiting tie-breaker</h2>
+  <p class="small text-muted">Readers 1 and 2 disagreed. A third reader who hasn't read the slide enters a tie-breaker reading.</p>
+  {% include "smears/_slide_table.html" with slides=awaiting_tiebreak show_sample=True empty_message="Nothing waiting." %}
+</div></div>
+
+<div class="card mb-4"><div class="card-body">
+  <h2 class="h5">Awaiting reader 2</h2>
+  {% include "smears/_slide_table.html" with slides=awaiting_second show_sample=True empty_message="Nothing waiting." %}
+</div></div>
+
+<div class="card"><div class="card-body">
+  <h2 class="h5">Final results awaiting approval</h2>
+  {% if perms_project.can_review %}
+    <p class="small text-muted">Tick results you've checked, then approve. Approved results are locked: readings can't change unless a reviewer unlocks them with a reason. Results that needed a tie-breaker are listed last; check those individually.</p>
+    <form method="post" action="{% url 'qc:bulk_approve' project.code %}">{% csrf_token %}
+      {% include "smears/_slide_table.html" with slides=awaiting_approval show_sample=True selectable=True empty_message="Nothing waiting." %}
+      {% if awaiting_approval %}
+        <button class="btn btn-primary mt-3" type="submit"><i class="bi bi-lock"></i> Approve and lock selected</button>
+        {% if awaiting_approval_total > awaiting_approval|length %}<span class="small text-muted ms-2">Showing the first {{ awaiting_approval|length }} of {{ awaiting_approval_total }}.</span>{% endif %}
+      {% endif %}
+    </form>
+  {% else %}
+    <p class="small text-muted">Only data reviewers can approve results.</p>
+    {% include "smears/_slide_table.html" with slides=awaiting_approval show_sample=True empty_message="Nothing waiting." %}
+  {% endif %}
+</div></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll("[data-select-all]").forEach(function (box) {
+    box.addEventListener("change", function () {
+      box.closest("table").querySelectorAll('tbody input[name="slide"]').forEach(function (c) { c.checked = box.checked; });
+    });
+  });
+</script>
+{% endblock %}

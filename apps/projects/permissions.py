@@ -11,8 +11,11 @@ Rules
 - Other users only see projects they are a member of.
 - Leads manage the project's details and members.
 - Leads and readers register participants and samples.
-- Reviewers and viewers have read-only access (reviewers gain result
-  approval in Phase 3).
+- Reviewers approve, lock and unlock final results; otherwise reviewers
+  and viewers are read-only.
+- While a slide is being read blind (awaiting reader 2 or a tie-breaker),
+  each reading is visible only to its own reader, reviewers and system
+  admins (see apps/qc/access.py).
 - Closed or archived projects are read-only for everyone except system
   admins, who can still change the project's status.
 """
@@ -74,6 +77,18 @@ def can_enter_data(user, project):
     return get_role(user, project) in DATA_ENTRY_ROLES
 
 
+def can_review(user, project):
+    """Approve, lock and unlock final results. Reviewers and system admins only (separation of duties)."""
+    if not user.is_authenticated or project.is_read_only:
+        return False
+    return user.is_system_admin or get_role(user, project) == Role.REVIEWER
+
+
+def sees_blinded_results(user, project):
+    """Can see every reading even while a slide is still being read blind."""
+    return user.is_authenticated and (user.is_system_admin or get_role(user, project) == Role.REVIEWER)
+
+
 def project_permissions(user, project):
     """All permission flags for templates, computed once per request."""
     return {
@@ -81,4 +96,5 @@ def project_permissions(user, project):
         "can_manage": can_manage_project(user, project),
         "can_change_status": can_change_status(user, project),
         "can_enter_data": can_enter_data(user, project),
+        "can_review": can_review(user, project),
     }

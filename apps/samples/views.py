@@ -173,7 +173,7 @@ class SampleDetailView(SampleMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["slides"] = self.object.slides.select_related("smear_type").prefetch_related("readings__reader")
+        context["slides"] = self.object.slides.select_related("smear_type", "final_result")
         return context
 
 

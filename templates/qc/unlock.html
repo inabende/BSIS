@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Unlock {{ slide }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Unlock result" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card"><div class="card-body p-4">
+      <h1 class="h4 mb-2"><i class="bi bi-unlock"></i> Unlock slide {{ slide }}</h1>
+      <p class="text-muted small">Unlocking lets staff correct the readings again. The final result is then recalculated and needs approving again. Your reason is kept in the slide's history.</p>
+      <form method="post" novalidate>{% csrf_token %}
+        {% include "core/_form.html" %}
+        <button class="btn btn-danger" type="submit">Unlock</button>
+        <a class="btn btn-link" href="{% url 'smears:slide_detail' project.code slide.pk %}">Cancel</a>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

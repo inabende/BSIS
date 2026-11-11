@@ -11,6 +11,7 @@ urlpatterns = [
     path("slides/<int:pk>/", views.SlideDetailView.as_view(), name="slide_detail"),
     path("slides/<int:pk>/edit/", views.SlideUpdateView.as_view(), name="slide_update"),
     path("slides/<int:pk>/history/", views.SlideHistoryView.as_view(), name="slide_history"),
+    path("slides/<int:pk>/readings/new/", views.ReadingCreateView.as_view(), name="reading_create"),
     path(
         "slides/<int:pk>/readings/<int:reading_pk>/edit/",
         views.ReadingUpdateView.as_view(),

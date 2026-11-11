@@ -17,6 +17,17 @@ from .models import Project, ProjectMembership
 Role = ProjectMembership.Role
 
 
+def qc_counts(slides):
+    """How many slides need a second reading, a tie-breaker, or approval."""
+    counts = slides.aggregate(
+        second=Count("pk", filter=Q(status="reading")),
+        tiebreak=Count("pk", filter=Q(status="discordant")),
+        approval=Count("pk", filter=Q(final_result__isnull=False, final_result__locked=False)),
+    )
+    counts["attention"] = counts["second"] + counts["tiebreak"] + counts["approval"]
+    return counts
+
+
 class ProjectListView(LoginRequiredMixin, ListView):
     template_name = "projects/project_list.html"
     context_object_name = "projects"
@@ -78,6 +89,7 @@ class ProjectDetailView(ProjectAccessMixin, DetailView):
         context["participant_count"] = self.project.participants.count()
         context["sample_count"] = self.project.samples.count()
         context["slide_count"] = self.project.slides.count()
+        context["qc_counts"] = qc_counts(self.project.slides.all())
         context["smear_types"] = [link.smear_type for link in self.project.smear_type_links.select_related("smear_type")]
         context["recent_samples"] = self.project.samples.select_related("participant", "site")[:10]
         return context

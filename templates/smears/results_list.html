@@ -2,10 +2,20 @@
 {% block title %}Results – {{ project.code }}{% endblock %}
 {% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Smear results" %}{% endblock %}
 {% block content %}
-<h1 class="h3 mb-3">Smear results</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Smear results</h1>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'qc:review' project.code %}"><i class="bi bi-clipboard-check"></i> Review queue</a>
+</div>
+<p class="small text-muted">Results shown are each slide's <strong>final</strong> result. Slides still being read show their status instead.</p>
 <form class="row g-2 mb-3" method="get">
-  <div class="col-md-4"><input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Slide, sample or participant ID"></div>
-  <div class="col-md-3">
+  <div class="col-md-3"><input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Slide, sample or participant ID"></div>
+  <div class="col-md-2">
+    <select class="form-select" name="status">
+      <option value="">Any status</option>
+      {% for value, label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
     <select class="form-select" name="smear_type">
       <option value="">All smear types</option>
       {% for t in smear_types %}<option value="{{ t.pk }}" {% if request.GET.smear_type == t.pk|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
@@ -25,6 +35,7 @@
     </select>
   </div>
   <div class="col-md-1"><button class="btn btn-outline-secondary w-100" type="submit">Filter</button></div>
+  <div class="col-12"><small class="text-muted">Result and species filters apply to final results.</small></div>
 </form>
 <div class="card"><div class="card-body">
   {% include "smears/_slide_table.html" with show_sample=True %}

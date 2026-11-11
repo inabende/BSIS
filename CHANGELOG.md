@@ -1,5 +1,23 @@
 # Changelog
 
+## Phase 3 — 2026-11-11
+
+**Added**
+- **Double reading:** each project sets 1 or 2 readers per smear type (QC settings). The setting is copied onto each slide when recorded.
+- **Blind reading:** while a slide awaits reader 2 or a tie-breaker, readings are hidden from everyone but their own reader, reviewers and system admins: on the slide page, its history, edit pages and every results list. The same person can't read a slide twice.
+- **Discordance checks:** positive vs negative, different species, or density/parasitaemia differing by more than the project's threshold (default 50% of the mean). Reasons are stored and shown.
+- **Tie-breaker** (reader 3) for disagreeing slides, with a project choice of final rule: tie-breaker decides, or majority result with the mean of the two closest densities.
+- **Final result** for every slide, showing how it was decided and which readings were used. Existing slides got one from their single reading.
+- **Approval and locking** by data reviewers (one at a time or in bulk). Locked results can't be edited; unlocking needs a written reason, kept in history.
+- **Review queue** per project: awaiting reader 2, awaiting tie-breaker, awaiting approval.
+- "Needs attention" counts on the dashboard and project page.
+- QC guide for staff ([docs/04-qc-guide.md](docs/04-qc-guide.md)).
+- Demo data: MAL-2026-01 double-reads thick smears, with slides in every QC state.
+- 38 new automated tests (102 in total).
+
+**Changed**
+- Results lists and sample pages show each slide's final result or QC status (never reader 1's reading directly). Result and species filters use final results; new status filter.
+
 ## Phase 2 — 2026-11-11
 
 **Added**

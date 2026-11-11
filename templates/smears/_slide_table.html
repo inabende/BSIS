@@ -2,27 +2,26 @@
 <div class="table-responsive">
 <table class="table table-hover table-sm mb-0">
   <thead class="table-light"><tr>
-    <th>Slide ID</th>{% if show_sample %}<th>Sample</th><th>Participant</th>{% endif %}<th>Smear type</th><th>Result</th><th>Read</th><th>Reader</th>
+    {% if selectable %}<th style="width: 2rem"><input type="checkbox" class="form-check-input" data-select-all title="Select all"></th>{% endif %}
+    <th>Slide ID</th>{% if show_sample %}<th>Sample</th><th>Participant</th>{% endif %}<th>Smear type</th><th>Result</th><th>Recorded</th>
   </tr></thead>
   <tbody>
   {% for slide in slides %}
-    {% with reading=slide.primary_reading %}
     <tr>
+      {% if selectable %}<td><input type="checkbox" class="form-check-input" name="slide" value="{{ slide.pk }}"></td>{% endif %}
       <td><a class="fw-semibold" href="{% url 'smears:slide_detail' project.code slide.pk %}">{{ slide.slide_id }}</a></td>
       {% if show_sample %}
         <td><a href="{% url 'samples:sample_detail' project.code slide.sample_id %}">{{ slide.sample }}</a></td>
         <td>{{ slide.sample.participant }}</td>
       {% endif %}
-      <td>{{ slide.smear_type.name }}</td>
+      <td>{{ slide.smear_type.name }}{% if slide.readers_required == 2 %} <span class="badge text-bg-light border fw-normal" title="Double reading">×2</span>{% endif %}</td>
       <td>{% include "smears/_result_summary.html" %}</td>
-      <td class="text-nowrap">{{ reading.read_at|date:"d M Y" }}</td>
-      <td>{{ reading.reader|default:"" }}</td>
+      <td class="text-nowrap">{{ slide.created_at|date:"d M Y" }}</td>
     </tr>
-    {% endwith %}
   {% endfor %}
   </tbody>
 </table>
 </div>
 {% else %}
-<p class="text-muted mb-0">No smear results yet.</p>
+<p class="text-muted mb-0">{{ empty_message|default:"No smear results yet." }}</p>
 {% endif %}

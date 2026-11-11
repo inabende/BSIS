@@ -156,8 +156,13 @@ class FieldDefinition(models.Model):
 class ProjectSmearType(models.Model):
     """Which smear types a project records."""
 
+    class Readers(models.IntegerChoices):
+        ONE = 1, "1 reader"
+        TWO = 2, "2 independent readers (+ tie-breaker if they disagree)"
+
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="smear_type_links")
     smear_type = models.ForeignKey(SmearType, on_delete=models.PROTECT, related_name="project_links")
+    readers_required = models.PositiveSmallIntegerField(choices=Readers.choices, default=Readers.ONE)
 
     history = HistoricalRecords()
 
@@ -172,6 +177,11 @@ class ProjectSmearType(models.Model):
 
 def allowed_smear_types(project):
     return SmearType.objects.filter(is_active=True, project_links__project=project)
+
+
+def readers_required_for(project, smear_type):
+    link = ProjectSmearType.objects.filter(project=project, smear_type=smear_type).first()
+    return link.readers_required if link else 1
 
 
 class Slide(models.Model):
@@ -198,6 +208,12 @@ class Slide(models.Model):
     stain = models.CharField(max_length=15, choices=Stain.choices, default=Stain.GIEMSA)
     prepared_on = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    readers_required = models.PositiveSmallIntegerField(
+        default=1,
+        editable=False,
+        help_text="Copied from the project's setting when the slide is recorded, so later setting changes "
+        "don't alter slides already in progress.",
+    )
     notes = models.TextField(blank=True)
 
     created_by = models.ForeignKey(
@@ -222,10 +238,17 @@ class Slide(models.Model):
         super().save(*args, **kwargs)
 
     @property
-    def primary_reading(self):
-        """The reading shown as the slide's result (reader 1 until Phase 3 adds final results)."""
-        readings = list(self.readings.all())
-        return readings[0] if readings else None
+    def final(self):
+        """The slide's final result, or None while readings are still needed."""
+        try:
+            return self.final_result
+        except models.ObjectDoesNotExist:
+            return None
+
+    @property
+    def is_locked(self):
+        final = self.final
+        return bool(final and final.locked)
 
 
 class Reading(models.Model):

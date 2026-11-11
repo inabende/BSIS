@@ -21,6 +21,16 @@
   </div></div></div>
 </div>
 
+{% if qc.attention %}
+<div class="alert alert-warning d-flex flex-wrap gap-3 align-items-center">
+  <strong><i class="bi bi-clipboard-check"></i> Needs attention in your active projects:</strong>
+  <span>{{ qc.second }} awaiting reader 2</span>
+  <span>{{ qc.tiebreak }} awaiting tie-breaker</span>
+  <span>{{ qc.approval }} awaiting approval</span>
+  <span class="small text-muted">Open a project's review queue to act on them.</span>
+</div>
+{% endif %}
+
 <div class="row g-4">
   <div class="col-lg-7">
     <div class="card"><div class="card-body">

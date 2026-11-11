@@ -5,6 +5,7 @@
   <h1 class="h4 mb-0"><i class="bi bi-clock-history"></i> Change history: {{ record_label }}</h1>
   <a class="btn btn-outline-secondary btn-sm" href="{{ back_url }}"><i class="bi bi-arrow-left"></i> Back</a>
 </div>
+{% if hidden_note %}<div class="alert alert-info py-2 small"><i class="bi bi-eye-slash"></i> {{ hidden_note }}</div>{% endif %}
 <div class="card"><div class="card-body">
   {% if rows %}
   <table class="table">

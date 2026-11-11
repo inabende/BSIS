@@ -10,6 +10,7 @@ All demo users share the password in DEMO_PASSWORD below.
 """
 
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -92,6 +93,58 @@ class Command(BaseCommand):
                     is_positive=results["is_positive"], species=results["species"],
                     density_per_ul=results["density_per_ul"], parasitaemia_pct=results["parasitaemia_pct"],
                 )
+
+    def add_demo_double_reading(self, project, users):
+        """
+        MAL-2026-01 double-reads thick smears. Gives its single-read thick slides a
+        second reading, so the demo has slides in every QC state.
+        """
+        from apps.qc.models import FinalResult
+        from apps.qc.services import evaluate_slide
+        from apps.qc.views import lock_final
+        from apps.smears.models import ProjectSmearType, Reading, Slide
+
+        ProjectSmearType.objects.filter(project=project, smear_type__code="malaria_thick").update(readers_required=2)
+        slides = (
+            Slide.objects.filter(project=project, smear_type__code="malaria_thick", readers_required=1)
+            .order_by("sample__collected_at")
+        )
+        for index, slide in enumerate(slides):
+            r1 = slide.readings.get(reader_number=1)
+            slide.readers_required = 2
+            slide.save(update_fields=["readers_required"])
+            FinalResult.objects.filter(slide=slide, locked=False).delete()
+            other = users["reader1"] if r1.reader_id == users["reader2"].pk else users["reader2"]
+            state = index % 8
+            if state == 7:  # awaiting reader 2
+                evaluate_slide(slide)
+                continue
+
+            r2 = Reading(slide=slide, reader_number=2, reader=other, read_at=r1.read_at + timedelta(hours=2),
+                         site=r1.site, created_by=other, values=dict(r1.values))
+            for field in ("is_positive", "species", "density_per_ul", "parasitaemia_pct"):
+                setattr(r2, field, getattr(r1, field))
+            if state in (2, 5) and r1.is_positive:  # density disagreement
+                r2.density_per_ul = r1.density_per_ul * 3
+                r2.values["asexual_parasites_counted"] = r1.values.get("asexual_parasites_counted", 0) * 3
+            elif state in (2, 5):  # reader 2 calls a negative slide positive
+                r2.is_positive, r2.species, r2.density_per_ul = True, "pf", 80
+                r2.values = {"result": "positive", "species": ["pf"], "asexual_parasites_counted": 2,
+                             "wbc_counted": 200, "wbc_per_ul_used": 8000}
+            elif r1.is_positive:  # small, acceptable difference
+                r2.density_per_ul = r1.density_per_ul * Decimal("1.1")
+            r2.save()
+
+            if state == 5:  # tie-breaker by the lead, agreeing with reader 1
+                r3 = Reading(slide=slide, reader_number=3, reader=users["lead"], read_at=r1.read_at + timedelta(days=1),
+                             site=r1.site, created_by=users["lead"], values=dict(r1.values))
+                for field in ("is_positive", "species", "density_per_ul", "parasitaemia_pct"):
+                    setattr(r3, field, getattr(r1, field))
+                r3.save()
+
+            final = evaluate_slide(slide)
+            if final and state in (0, 1, 3):
+                lock_final(final, users["reviewer"])
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -179,6 +232,7 @@ class Command(BaseCommand):
 
         for project in Project.objects.filter(code__in=[p[0] for p in projects]):
             self.add_demo_results(project, users)
+        self.add_demo_double_reading(Project.objects.get(code="MAL-2026-01"), users)
 
         self.stdout.write(self.style.SUCCESS(
             f"Demo data ready. Users: {', '.join(users)} (password is DEMO_PASSWORD in seed_demo.py)."

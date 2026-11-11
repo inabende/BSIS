@@ -34,4 +34,8 @@ class HomeView(LoginRequiredMixin, TemplateView):
             .order_by("-created_at")[:8]
         )
         context["can_create"] = permissions.can_create_project(self.request.user)
+        from apps.projects.views import qc_counts
+        from apps.smears.models import Slide
+
+        context["qc"] = qc_counts(Slide.objects.filter(project__in=projects.filter(status=Project.Status.ACTIVE)))
         return context
