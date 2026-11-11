@@ -1,0 +1,22 @@
+{% if samples %}
+<div class="table-responsive">
+<table class="table table-hover table-sm mb-0">
+  <thead class="table-light"><tr>
+    <th>Sample ID</th>{% if show_participant %}<th>Participant</th>{% endif %}<th>Visit</th><th>Collected</th><th>Site</th>
+  </tr></thead>
+  <tbody>
+  {% for s in samples %}
+    <tr>
+      <td><a class="fw-semibold" href="{% url 'samples:sample_detail' project.code s.pk %}">{{ s.sample_id }}</a></td>
+      {% if show_participant %}<td><a href="{% url 'samples:participant_detail' project.code s.participant_id %}">{{ s.participant }}</a></td>{% endif %}
+      <td>{{ s.visit|default:"—" }}</td>
+      <td class="text-nowrap">{{ s.collected_at|date:"d M Y, H:i" }}</td>
+      <td>{{ s.site.name|default:"—" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="text-muted mb-0">No samples yet.</p>
+{% endif %}

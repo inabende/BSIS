@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}History – {{ record_label }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0"><i class="bi bi-clock-history"></i> Change history: {{ record_label }}</h1>
+  <a class="btn btn-outline-secondary btn-sm" href="{{ back_url }}"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+<div class="card"><div class="card-body">
+  {% if rows %}
+  <table class="table">
+    <thead><tr><th style="width: 12rem">When</th><th style="width: 10rem">Who</th><th style="width: 7rem">Action</th><th>Details</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td class="text-nowrap">{{ row.date|date:"d M Y, H:i" }}</td>
+        <td>{{ row.user|default:"System" }}</td>
+        <td><span class="badge {% if row.action == 'Created' %}text-bg-success{% elif row.action == 'Deleted' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{{ row.action }}</span></td>
+        <td>
+          {% for label, old, new in row.changes %}
+            <div><strong>{{ label }}:</strong> <span class="text-decoration-line-through text-muted">{{ old|default:"(blank)" }}</span> → {{ new|default:"(blank)" }}</div>
+          {% endfor %}
+          {% if row.reason %}<div class="small text-muted">Reason: {{ row.reason }}</div>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="text-muted mb-0">No history recorded.</p>{% endif %}
+</div></div>
+{% endblock %}

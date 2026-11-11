@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Not allowed{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+  <h1 class="h3">You don't have permission to do that</h1>
+  <p class="text-muted">Your role in this project doesn't allow this action, or the project is closed. Ask the project lead if you need access.</p>
+  <a class="btn btn-brand" href="{% url 'home' %}">Go to dashboard</a>
+</div>
+{% endblock %}

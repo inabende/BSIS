@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit {{ object }}{% else %}Register participant{% endif %}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb_participant=object crumb=object|yesno:"Edit,Register participant" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body p-4">
+      <h1 class="h4 mb-1">{% if object %}Edit participant {{ object }}{% else %}Register participant{% endif %}</h1>
+      <p class="text-muted small mb-3">Use the study's participant ID only. Don't enter names or contact details.</p>
+      <form method="post" novalidate>{% csrf_token %}
+        {% include "core/_form.html" %}
+        <button class="btn btn-brand" type="submit">{% if object %}Save changes{% else %}Register{% endif %}</button>
+        <a class="btn btn-link" href="{% if object %}{% url 'samples:participant_detail' project.code object.pk %}{% else %}{% url 'samples:participant_list' project.code %}{% endif %}">Cancel</a>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

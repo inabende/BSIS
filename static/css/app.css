@@ -1,0 +1,35 @@
+:root {
+  --brand: #7a1f2b;
+  --brand-dark: #5c1720;
+}
+
+body { background: #f5f6f8; }
+
+.bg-brand { background-color: var(--brand) !important; }
+
+.btn-brand {
+  --bs-btn-bg: var(--brand);
+  --bs-btn-border-color: var(--brand);
+  --bs-btn-hover-bg: var(--brand-dark);
+  --bs-btn-hover-border-color: var(--brand-dark);
+  --bs-btn-active-bg: var(--brand-dark);
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+}
+
+.card { border: 0; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+
+.stat-card .stat-value { font-size: 2rem; font-weight: 600; line-height: 1; }
+.stat-card .stat-label { color: #6c757d; font-size: .875rem; }
+
+.table > :not(caption) > * > * { vertical-align: middle; }
+
+.login-wrap { max-width: 400px; margin: 8vh auto; }
+
+.dl-grid { display: grid; grid-template-columns: max-content 1fr; gap: .4rem 1.25rem; margin: 0; }
+.dl-grid dt { color: #6c757d; font-weight: 500; }
+.dl-grid dd { margin: 0; }
+
+.checkbox-list { max-height: 220px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .375rem; padding: .5rem .75rem; background: #fff; }
+.checkbox-list label { display: block; margin: .15rem 0; }
+.checkbox-list input { margin-right: .4rem; }

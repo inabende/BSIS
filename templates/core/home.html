@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0">Welcome, {{ user.first_name|default:user.username }}</h1>
+    <p class="text-muted mb-0">Blood smear results across all your projects.</p>
+  </div>
+  {% if can_create %}<a class="btn btn-brand" href="{% url 'projects:create' %}"><i class="bi bi-plus-lg"></i> New project</a>{% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-4"><div class="card stat-card"><div class="card-body">
+    <div class="stat-value">{{ totals.projects }}</div><div class="stat-label">Projects you can access</div>
+  </div></div></div>
+  <div class="col-sm-4"><div class="card stat-card"><div class="card-body">
+    <div class="stat-value">{{ totals.participants }}</div><div class="stat-label">Participants</div>
+  </div></div></div>
+  <div class="col-sm-4"><div class="card stat-card"><div class="card-body">
+    <div class="stat-value">{{ totals.samples }}</div><div class="stat-label">Samples</div>
+  </div></div></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h5 mb-3">Active projects</h2>
+      {% if projects %}
+      <div class="list-group list-group-flush">
+        {% for p in projects %}
+        <a href="{{ p.get_absolute_url }}" class="list-group-item list-group-item-action px-0">
+          <div class="d-flex justify-content-between">
+            <div><span class="badge text-bg-light border me-2">{{ p.code }}</span><strong>{{ p.name }}</strong></div>
+            <small class="text-muted text-nowrap">{{ p.participant_count }} participants · {{ p.sample_count }} samples</small>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">You aren't a member of any active project yet.{% if can_create %} Create one to get started.{% else %} Ask a project lead to add you.{% endif %}</p>
+      {% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <h2 class="h5 mb-3">Recently recorded samples</h2>
+      {% if recent_samples %}
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Sample</th><th>Project</th><th>Collected</th></tr></thead>
+        <tbody>
+        {% for s in recent_samples %}
+          <tr>
+            <td><a href="{% url 'samples:sample_detail' s.project.code s.pk %}">{{ s.sample_id }}</a></td>
+            <td>{{ s.project.code }}</td>
+            <td class="text-nowrap">{{ s.collected_at|date:"d M Y" }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p class="text-muted mb-0">No samples yet.</p>{% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

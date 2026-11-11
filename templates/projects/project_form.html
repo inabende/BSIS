@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit {{ object.code }}{% else %}New project{% endif %}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb=object|yesno:"Edit,New project" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card"><div class="card-body p-4">
+      <h1 class="h4 mb-3">{% if object %}Edit project details{% else %}New project{% endif %}</h1>
+      <form method="post" novalidate>{% csrf_token %}
+        {% include "core/_form.html" %}
+        {% if not form.fields.sites.queryset.exists %}
+          <p class="small text-muted">No sites exist yet. A system admin can add them under Administration → Sites.</p>
+        {% endif %}
+        <button class="btn btn-brand" type="submit">{% if object %}Save changes{% else %}Create project{% endif %}</button>
+        <a class="btn btn-link" href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'projects:list' %}{% endif %}">Cancel</a>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

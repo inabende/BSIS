@@ -1,0 +1,11 @@
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'projects:list' %}">Projects</a></li>
+    {% if project %}<li class="breadcrumb-item"><a href="{{ project.get_absolute_url }}">{{ project.code }}</a></li>{% endif %}
+    {% if crumb_participant %}<li class="breadcrumb-item"><a href="{% url 'samples:participant_detail' project.code crumb_participant.pk %}">{{ crumb_participant }}</a></li>{% endif %}
+    {% if crumb %}<li class="breadcrumb-item active">{{ crumb }}</li>{% endif %}
+  </ol>
+</nav>
+{% if project.is_read_only %}
+<div class="alert alert-warning py-2"><i class="bi bi-lock"></i> This project is <strong>{{ project.get_status_display|lower }}</strong>. Its data can be viewed but not changed.</div>
+{% endif %}

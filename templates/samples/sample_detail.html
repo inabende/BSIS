@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Sample {{ sample }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb_participant=sample.participant crumb=sample.sample_id %}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <h1 class="h3 mb-0"><i class="bi bi-eyedropper"></i> Sample {{ sample }}</h1>
+  <div class="btn-group">
+    {% if perms_project.can_enter_data %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'samples:sample_update' project.code sample.pk %}"><i class="bi bi-pencil"></i> Edit</a>{% endif %}
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'samples:sample_history' project.code sample.pk %}"><i class="bi bi-clock-history"></i> History</a>
+  </div>
+</div>
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <h2 class="h5 mb-3">Details</h2>
+      <dl class="dl-grid">
+        <dt>Project</dt><dd>{{ project.code }}</dd>
+        <dt>Participant</dt><dd><a href="{% url 'samples:participant_detail' project.code sample.participant.pk %}">{{ sample.participant }}</a></dd>
+        <dt>Visit</dt><dd>{{ sample.visit|default:"—" }}</dd>
+        <dt>Collected</dt><dd>{{ sample.collected_at|date:"d M Y, H:i" }}</dd>
+        <dt>Site</dt><dd>{{ sample.site.name|default:"—" }}</dd>
+        <dt>Recorded</dt><dd>{{ sample.created_at|date:"d M Y" }}{% if sample.created_by %} by {{ sample.created_by }}{% endif %}</dd>
+      </dl>
+      {% if sample.notes %}<p class="mt-3 mb-0 small">{{ sample.notes|linebreaksbr }}</p>{% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h5 mb-2">Slides and smear results</h2>
+      <p class="text-muted mb-0">Recording thick, thin and hematology smear results for this sample arrives in Phase 2.</p>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

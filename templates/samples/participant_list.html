@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Participants – {{ project.code }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Participants" %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Participants</h1>
+  {% if perms_project.can_enter_data %}<a class="btn btn-brand" href="{% url 'samples:participant_create' project.code %}"><i class="bi bi-person-plus"></i> Register participant</a>{% endif %}
+</div>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-sm-9"><input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Search by participant ID"></div>
+  <div class="col-sm-3"><button class="btn btn-outline-secondary w-100" type="submit">Search</button></div>
+</form>
+<div class="card"><div class="card-body p-0">
+  <table class="table table-hover mb-0">
+    <thead class="table-light"><tr><th>Participant ID</th><th>Sex</th><th>Year of birth</th><th>Enrolment site</th><th>Enrolled</th><th class="text-end">Samples</th></tr></thead>
+    <tbody>
+    {% for p in participants %}
+      <tr>
+        <td><a class="fw-semibold" href="{% url 'samples:participant_detail' project.code p.pk %}">{{ p.study_participant_id }}</a></td>
+        <td>{{ p.get_sex_display }}</td>
+        <td>{{ p.year_of_birth|default:"—" }}</td>
+        <td>{{ p.enrolment_site.name|default:"—" }}</td>
+        <td>{{ p.enrolled_on|date:"d M Y"|default:"—" }}</td>
+        <td class="text-end">{{ p.sample_count }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">No participants found.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+<div class="mt-3">{% include "core/_pagination.html" %}</div>
+{% endblock %}

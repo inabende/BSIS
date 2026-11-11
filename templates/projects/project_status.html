@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Change status – {{ project.code }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Change status" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card"><div class="card-body p-4">
+      <h1 class="h4 mb-2">Change project status</h1>
+      <p class="text-muted small">Closed and archived projects become read-only.{% if not user.is_superuser %} Only a system admin can reopen a project.{% endif %}</p>
+      <form method="post" novalidate>{% csrf_token %}
+        {% include "core/_form.html" %}
+        <button class="btn btn-brand" type="submit">Change status</button>
+        <a class="btn btn-link" href="{{ project.get_absolute_url }}">Cancel</a>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

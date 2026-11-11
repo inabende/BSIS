@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ project.code }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" %}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ project.name }}</h1>
+    <span class="badge text-bg-light border">{{ project.code }}</span>
+    <span class="badge {% if project.status == 'active' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ project.get_status_display }}</span>
+    {% if perms_project.role %}<span class="badge text-bg-info">Your role: {{ perms_project.role|title }}</span>{% elif user.is_superuser %}<span class="badge text-bg-dark">System admin</span>{% endif %}
+  </div>
+  <div class="btn-group">
+    {% if perms_project.can_manage %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'projects:update' project.code %}"><i class="bi bi-pencil"></i> Edit</a>{% endif %}
+    {% if perms_project.can_change_status %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'projects:status' project.code %}"><i class="bi bi-flag"></i> Status</a>{% endif %}
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'projects:history' project.code %}"><i class="bi bi-clock-history"></i> History</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3"><a class="text-decoration-none text-reset" href="{% url 'samples:participant_list' project.code %}"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ participant_count }}</div><div class="stat-label">Participants <i class="bi bi-arrow-right"></i></div>
+  </div></div></a></div>
+  <div class="col-sm-6 col-lg-3"><a class="text-decoration-none text-reset" href="{% url 'samples:sample_list' project.code %}"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ sample_count }}</div><div class="stat-label">Samples <i class="bi bi-arrow-right"></i></div>
+  </div></div></a></div>
+  <div class="col-lg-6 d-flex align-items-center gap-2">
+    {% if perms_project.can_enter_data %}
+      <a class="btn btn-brand" href="{% url 'samples:participant_create' project.code %}"><i class="bi bi-person-plus"></i> Register participant</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h5 mb-3">Details</h2>
+      <dl class="dl-grid">
+        <dt>Principal investigator</dt><dd>{{ project.principal_investigator }}</dd>
+        <dt>Protocol / ethics ID</dt><dd>{{ project.protocol_id|default:"—" }}</dd>
+        <dt>Dates</dt><dd>{{ project.start_date|date:"d M Y"|default:"?" }} – {{ project.end_date|date:"d M Y"|default:"ongoing" }}</dd>
+        <dt>Sites</dt><dd>{% for s in project.sites.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+        <dt>Default WBC/µL</dt><dd>{{ project.default_wbc_per_ul }}</dd>
+        <dt>Created</dt><dd>{{ project.created_at|date:"d M Y" }}{% if project.created_by %} by {{ project.created_by }}{% endif %}</dd>
+      </dl>
+      {% if project.description %}<p class="mt-3 mb-0">{{ project.description|linebreaksbr }}</p>{% endif %}
+    </div></div>
+  </div>
+
+  <div class="col-lg-6" id="members">
+    <div class="card h-100"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">Members</h2>
+        {% if perms_project.can_manage %}<a class="btn btn-sm btn-outline-primary" href="{% url 'projects:member_add' project.code %}"><i class="bi bi-person-plus"></i> Add member</a>{% endif %}
+      </div>
+      <table class="table table-sm mb-0">
+        <tbody>
+        {% for m in memberships %}
+          <tr>
+            <td>{{ m.user }}<div class="small text-muted">{{ m.user.job_title }}</div></td>
+            <td>{{ m.get_role_display }}</td>
+            {% if perms_project.can_manage %}
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-link" href="{% url 'projects:member_role' project.code m.pk %}">Change role</a>
+              <form class="d-inline" method="post" action="{% url 'projects:member_remove' project.code m.pk %}" onsubmit="return confirm('Remove {{ m.user|escapejs }} from this project?');">{% csrf_token %}
+                <button class="btn btn-sm btn-link text-danger" type="submit">Remove</button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+        {% empty %}<tr><td class="text-muted">No members.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <div class="col-12">
+    <div class="card"><div class="card-body">
+      <h2 class="h5 mb-3">Recent samples</h2>
+      {% include "samples/_sample_table.html" with samples=recent_samples show_participant=True %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}
