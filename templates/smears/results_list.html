@@ -4,7 +4,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h3 mb-0">Smear results</h1>
-  <a class="btn btn-outline-secondary btn-sm" href="{% url 'qc:review' project.code %}"><i class="bi bi-clipboard-check"></i> Review queue</a>
+  <div class="btn-group btn-group-sm">
+    <a class="btn btn-outline-success" href="{% url 'reports:export' 'xlsx' %}?project={{ project.pk }}{% if request.GET %}&amp;{{ request.GET.urlencode }}{% endif %}"><i class="bi bi-file-earmark-excel"></i> Export to Excel</a>
+    <a class="btn btn-outline-secondary" href="{% url 'reports:export' 'csv' %}?project={{ project.pk }}{% if request.GET %}&amp;{{ request.GET.urlencode }}{% endif %}"><i class="bi bi-filetype-csv"></i> CSV</a>
+    <a class="btn btn-outline-secondary" href="{% url 'qc:review' project.code %}"><i class="bi bi-clipboard-check"></i> Review queue</a>
+  </div>
 </div>
 <p class="small text-muted">Results shown are each slide's <strong>final</strong> result. Slides still being read show their status instead.</p>
 <form class="row g-2 mb-3" method="get">

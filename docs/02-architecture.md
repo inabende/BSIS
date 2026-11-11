@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.4 (draft) |
+| **Version** | 0.5 (draft) |
 | **Date** | 2026-11-11 |
 | **Related** | [01-requirements.md](01-requirements.md) |
 
@@ -47,7 +47,7 @@ flowchart LR
 
 The Django project is split into apps, each owning one area:
 
-Built so far: `core`, `accounts`, `projects`, `samples` (Phase 1), `smears` (Phase 2) and `qc` (Phase 3). The others arrive in later phases.
+Built so far: `core`, `accounts`, `projects`, `samples` (Phase 1), `smears` (Phase 2), `qc` (Phase 3) and `reports` (Phase 4). The others arrive in later phases.
 
 ```mermaid
 flowchart TB
@@ -83,7 +83,7 @@ bsintegratedsystem/
 │   ├── samples/
 │   ├── smears/           # smear types, slides, readings; dynamic.py + calculations.py
 │   ├── qc/               # QC settings, final results; rules.py, services.py, access.py (blinding)
-│   ├── reports/          # Phase 4
+│   ├── reports/          # search, dashboard, exports; filters.py, stats.py, exports.py, export log
 │   ├── imports/          # Phase 5
 │   └── audit/            # Phase 4+ (history pages already exist per record)
 ├── templates/            # HTML pages, grouped by app
@@ -116,13 +116,16 @@ Each app keeps its tests in `apps/<app>/tests/`.
 | `/projects/<code>/slides/<id>/lock/` · `unlock/` | Approve and lock · unlock with reason |
 | `/projects/<code>/qc/review/` | Review queue: awaiting reader 2, tie-breaker, approval (bulk approve) |
 | `/projects/<code>/qc/settings/` | QC settings: readers per smear type, threshold, final rule |
-| `/admin/` | Administration (system admins only): users, sites, smear types and their fields |
+| `/search/` | Search final results across all the user's projects |
+| `/search/export.xlsx` · `/search/export.csv` | Download the current search (same filters) |
+| `/reports/` | Reports dashboard (same filters, one smear type at a time) |
+| `/admin/` | Administration (system admins only): users, sites, smear types and their fields, export log |
 
 The project code appears in every address, and every page checks that the record really belongs to that project, so a user can't reach another project's data by editing the address.
 
 ## 4. Data model
 
-Built so far: USER, SITE, PROJECT, PROJECT_MEMBERSHIP, PARTICIPANT, SAMPLE (Phase 1); SMEAR_TYPE, FIELD_DEFINITION, PROJECT_SMEAR_TYPE, SLIDE, READING (Phase 2); QC_SETTINGS, FINAL_RESULT (Phase 3). Every one of them keeps a full change history.
+Built so far: USER, SITE, PROJECT, PROJECT_MEMBERSHIP, PARTICIPANT, SAMPLE (Phase 1); SMEAR_TYPE, FIELD_DEFINITION, PROJECT_SMEAR_TYPE, SLIDE, READING (Phase 2); QC_SETTINGS, FINAL_RESULT (Phase 3). Every one of them keeps a full change history. Phase 4 adds EXPORT_LOG (one row per data export; read-only, kept out of the diagram).
 
 ```mermaid
 erDiagram
@@ -313,7 +316,30 @@ After every reading is saved or edited, `apps/qc/services.py` (`evaluate_slide`)
 
 **Locking:** a reviewer approves a final result, from the slide page or several at once from the review queue, and it becomes **locked**. While locked, readings and slide details can't be edited and the final result isn't recalculated. Unlocking requires a written reason, kept in the history.
 
-### 5.2 Importing existing study data
+### 5.2 Searching, reporting and exporting across projects
+
+Search, the reports dashboard and exports share one filter form (`apps/reports/filters.py`), so the same filters give the same slides everywhere:
+
+```mermaid
+flowchart LR
+    U[User's filters] --> F[SearchForm]
+    P[Projects the user<br/>is a member of] --> F
+    F --> Q[Slides: final results only]
+    Q --> S[Search page]
+    Q --> D[Reports dashboard<br/>stats.py, one smear type]
+    Q --> X[Export: Excel / CSV<br/>exports.py]
+    X --> L[(Export log)]
+```
+
+- **Scope:** every query starts from the projects the user is a member of. Asking for another project's ID in the address returns nothing.
+- **Final results only:** search filters, dashboard figures and the "Final results" export sheet use each slide's final result. Slides still being read show their status. So blinding can't be bypassed through search or reports.
+- **Export readings sheets:** one sheet per smear type with every field as a column. Readings of slides still being read blind are included only for reviewers and system admins of that project.
+- **Dashboard** figures are for one smear type at a time, so a thick and a thin slide from the same sample aren't double-counted. Positivity = positive ÷ (positive + negative) final results. Density summary uses the **geometric mean** of positive densities, the usual summary for skewed parasite counts. Disagreement rate = slides where readers disagreed ÷ double-read slides with a final result.
+- **Export safety:** text cells that start with `=`, `+`, `-` or `@` are prefixed with `'`, so spreadsheet programs don't run them as formulas. CSV includes a UTF-8 marker so Excel shows µ and accents correctly.
+- **Export log:** user, time, format, filters, projects included, and slide and reading counts. Read-only in Administration.
+- **Charts** use Chart.js, stored locally in `static/vendor/chartjs/`. Each is single-series in one colour with a hover tooltip, and has a "Show data" table for screen readers and printing.
+
+### 5.3 Importing existing study data
 
 ```mermaid
 sequenceDiagram
@@ -351,6 +377,7 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | Change QC settings (readers required, threshold, rule) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | See readings while a slide is read blind | ✅ | own reading only | own reading only | ✅ | ❌ | ❌ |
 | Approve/lock and unlock final results | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Search, reports and export (their own projects only; exports logged) | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 - A closed or archived project is read-only for everyone. Only a system admin can reopen it.
 - A project always keeps at least one lead. The last lead can't be removed or demoted.
@@ -416,6 +443,10 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | D17 | Density disagreement = difference as % of the mean | Symmetric (order of readers doesn't matter) and easy to explain; threshold configurable | 2026-11-11 |
 | D18 | Only reviewers and system admins lock/unlock; leads can't | Separation of duties: the people producing results don't approve them | 2026-11-11 |
 | D19 | Locked results are never recalculated | An approved result can only change through an audited unlock | 2026-11-11 |
+| D20 | Search, dashboard and exports share one filter form | Same filters give the same slides everywhere; one place to enforce project scope | 2026-11-11 |
+| D21 | Reports use final results only, one smear type at a time | Keeps blinding intact; avoids double-counting thick + thin from one sample | 2026-11-11 |
+| D22 | Every export is logged; any member can export what they can see | Data governance without blocking statisticians (viewers); can be tightened later | 2026-11-11 |
+| D23 | Statistics computed in the database (counts, log-mean), not in Python | Scales to large datasets (NFR-8) | 2026-11-11 |
 
 ## 9. Change log
 
@@ -425,3 +456,4 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | 0.2 | 2026-11-11 | Phase 1 built: added Site entity, permission matrix, web addresses, configuration variables, decisions D5–D9 |
 | 0.3 | 2026-11-11 | Phase 2 built: smear type data model, result-saving flow, calculation table, web addresses, decisions D10–D14 |
 | 0.4 | 2026-11-11 | Phase 3 built: QC data model, slide status/final-result table, blinding and locking rules, permission rows, web addresses, decisions D15–D19 |
+| 0.5 | 2026-11-11 | Phase 4 built: search/report/export flow (§5.2), export log, web addresses, decisions D20–D23 |

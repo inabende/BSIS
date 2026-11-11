@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<style>
+  /* Chart roles (reference palette, light). Text never wears the series colour. */
+  .viz-root {
+    --series-1: #2a78d6;
+    --series-1-hover: #1c5cab;
+    --grid: #e7e6e2;
+    --axis-text: #52514e;
+    --text-primary: #0b0b0b;
+  }
+  .viz-card canvas { width: 100% !important; }
+  .viz-card .chart-box { position: relative; height: 260px; }
+  .viz-card details summary { cursor: pointer; font-size: .85rem; color: #52514e; }
+  .kpi .stat-value { font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="viz-root">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0"><i class="bi bi-bar-chart"></i> Reports</h1>
+    <p class="text-muted small mb-0">Final results (after quality control) across your projects, one smear type at a time.</p>
+  </div>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:search' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"><i class="bi bi-search"></i> See these slides</a>
+</div>
+
+{% url 'reports:dashboard' as action %}
+{% include "reports/_filters.html" with action=action hide="q status density_min density_max" submit_label="Update reports" %}
+
+{% if not smear_type %}
+  <div class="alert alert-info">There are no smear results in your projects yet.</div>
+{% else %}
+<h2 class="h5 mb-3">{{ smear_type.name }}
+  {% for label, value in active_filters.items %}{% if label != "Smear type" %}<span class="badge text-bg-light border fw-normal ms-1">{{ label }}: {{ value }}</span>{% endif %}{% endfor %}
+</h2>
+
+{% with t=stats.totals %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-2"><div class="card stat-card kpi h-100"><div class="card-body">
+    <div class="stat-value">{{ t.final }}</div><div class="stat-label">Slides with a final result</div></div></div></div>
+  {% if stats.has_positivity %}
+  <div class="col-6 col-lg-2"><div class="card stat-card kpi h-100"><div class="card-body">
+    <div class="stat-value">{{ t.positivity }}%</div><div class="stat-label">Positivity ({{ t.positive }} of {{ t.positive|add:t.negative }})</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card stat-card kpi h-100"><div class="card-body">
+    <div class="stat-value">{% if t.geo_mean_density %}{{ t.geo_mean_density|floatformat:"0g" }}{% else %}—{% endif %}</div><div class="stat-label">Geometric mean density of positives (/µL)</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card stat-card kpi h-100"><div class="card-body">
+    <div class="stat-value">{% if t.discordance_rate is not None %}{{ t.discordance_rate }}%{% else %}—{% endif %}</div><div class="stat-label">Readers disagreed ({{ t.discordant }} of {{ t.double_read }} double-read)</div></div></div></div>
+  {% endif %}
+  <div class="col-6 col-lg-2"><div class="card stat-card kpi h-100"><div class="card-body">
+    <div class="stat-value">{{ t.awaiting }}</div><div class="stat-label">Still being read</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card stat-card kpi h-100"><div class="card-body">
+    <div class="stat-value">{{ t.locked }}</div><div class="stat-label">Approved and locked</div></div></div></div>
+</div>
+{% endwith %}
+
+{% if stats.totals.final == 0 %}
+  <div class="alert alert-info">No final results match these filters yet.</div>
+{% else %}
+<div class="row g-4">
+  {% if stats.has_positivity %}
+  <div class="col-lg-6"><div class="card viz-card h-100"><div class="card-body">
+    <h3 class="h6">Positivity by project (%)</h3>
+    <div class="chart-box"><canvas id="chart-positivity" role="img" aria-label="Bar chart of positivity percentage by project"></canvas></div>
+    <details class="mt-2"><summary>Show data</summary>
+      <table class="table table-sm small mb-0 mt-2"><thead><tr><th>Project</th><th class="text-end">Positive</th><th class="text-end">Negative</th><th class="text-end">Positivity</th></tr></thead><tbody>
+      {% for p in stats.by_project %}<tr><td>{{ p.project__code }}</td><td class="text-end">{{ p.positive }}</td><td class="text-end">{{ p.negative }}</td><td class="text-end">{{ p.positivity|default_if_none:"—" }}{% if p.positivity is not None %}%{% endif %}</td></tr>{% endfor %}
+      </tbody></table></details>
+  </div></div></div>
+
+  <div class="col-lg-6"><div class="card viz-card h-100"><div class="card-body">
+    <h3 class="h6">Monthly positivity (%), by collection month</h3>
+    <div class="chart-box"><canvas id="chart-monthly-positivity" role="img" aria-label="Line chart of monthly positivity percentage"></canvas></div>
+    <details class="mt-2"><summary>Show data</summary>
+      <table class="table table-sm small mb-0 mt-2"><thead><tr><th>Month</th><th class="text-end">Slides</th><th class="text-end">Positive</th><th class="text-end">Positivity</th></tr></thead><tbody>
+      {% for m in stats.monthly %}<tr><td>{{ m.label }}</td><td class="text-end">{{ m.total }}</td><td class="text-end">{{ m.positive }}</td><td class="text-end">{{ m.positivity }}%</td></tr>{% endfor %}
+      </tbody></table></details>
+  </div></div></div>
+
+  <div class="col-lg-6"><div class="card viz-card h-100"><div class="card-body">
+    <h3 class="h6">Species among positive slides</h3>
+    <div class="chart-box"><canvas id="chart-species" role="img" aria-label="Bar chart of species counts among positive slides"></canvas></div>
+    <details class="mt-2"><summary>Show data</summary>
+      <table class="table table-sm small mb-0 mt-2"><thead><tr><th>Species</th><th class="text-end">Slides</th></tr></thead><tbody>
+      {% for s in stats.species %}<tr><td>{{ s.label }}</td><td class="text-end">{{ s.count }}</td></tr>{% empty %}<tr><td colspan="2" class="text-muted">No positive slides.</td></tr>{% endfor %}
+      </tbody></table></details>
+  </div></div></div>
+
+  {% if stats.density %}
+  <div class="col-lg-6"><div class="card viz-card h-100"><div class="card-body">
+    <h3 class="h6">Parasite density of positive slides (/µL)</h3>
+    <div class="chart-box"><canvas id="chart-density" role="img" aria-label="Bar chart of positive slides by parasite density band"></canvas></div>
+    <details class="mt-2"><summary>Show data</summary>
+      <table class="table table-sm small mb-0 mt-2"><thead><tr><th>Density band</th><th class="text-end">Slides</th></tr></thead><tbody>
+      {% for b in stats.density %}<tr><td>{{ b.label }}</td><td class="text-end">{{ b.count }}</td></tr>{% endfor %}
+      </tbody></table></details>
+  </div></div></div>
+  {% endif %}
+  {% endif %}
+
+  <div class="col-lg-6"><div class="card viz-card h-100"><div class="card-body">
+    <h3 class="h6">Slides with a final result, by collection month</h3>
+    <div class="chart-box"><canvas id="chart-monthly-count" role="img" aria-label="Bar chart of slides per collection month"></canvas></div>
+    <details class="mt-2"><summary>Show data</summary>
+      <table class="table table-sm small mb-0 mt-2"><thead><tr><th>Month</th><th class="text-end">Slides</th></tr></thead><tbody>
+      {% for m in stats.monthly %}<tr><td>{{ m.label }}</td><td class="text-end">{{ m.total }}</td></tr>{% endfor %}
+      </tbody></table></details>
+  </div></div></div>
+
+  {% if stats.totals.double_read %}
+  <div class="col-lg-6"><div class="card viz-card h-100"><div class="card-body">
+    <h3 class="h6">Readers disagreed, by project (% of double-read slides)</h3>
+    <div class="chart-box"><canvas id="chart-discordance" role="img" aria-label="Bar chart of reader disagreement rate by project"></canvas></div>
+    <details class="mt-2"><summary>Show data</summary>
+      <table class="table table-sm small mb-0 mt-2"><thead><tr><th>Project</th><th class="text-end">Double-read</th><th class="text-end">Disagreed</th><th class="text-end">Rate</th></tr></thead><tbody>
+      {% for p in stats.by_project %}<tr><td>{{ p.project__code }}</td><td class="text-end">{{ p.double_read }}</td><td class="text-end">{{ p.discordant }}</td><td class="text-end">{{ p.discordance_rate|default_if_none:"—" }}{% if p.discordance_rate is not None %}%{% endif %}</td></tr>{% endfor %}
+      </tbody></table></details>
+  </div></div></div>
+  {% endif %}
+</div>
+
+<div class="card mt-4"><div class="card-body">
+  <h3 class="h6">Summary by project</h3>
+  <div class="table-responsive">
+  <table class="table table-sm mb-0">
+    <thead class="table-light"><tr><th>Project</th><th class="text-end">Final results</th>{% if stats.has_positivity %}<th class="text-end">Positive</th><th class="text-end">Positivity</th><th class="text-end">Double-read</th><th class="text-end">Disagreed</th>{% endif %}<th class="text-end">Still being read</th></tr></thead>
+    <tbody>
+    {% for p in stats.by_project %}
+      <tr>
+        <td><span class="badge text-bg-light border">{{ p.project__code }}</span> {{ p.project__name }}</td>
+        <td class="text-end">{{ p.final }}</td>
+        {% if stats.has_positivity %}
+        <td class="text-end">{{ p.positive }}</td>
+        <td class="text-end">{{ p.positivity|default_if_none:"—" }}{% if p.positivity is not None %}%{% endif %}</td>
+        <td class="text-end">{{ p.double_read }}</td>
+        <td class="text-end">{{ p.discordant }}</td>
+        {% endif %}
+        <td class="text-end">{{ p.awaiting }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div></div>
+{% endif %}
+
+{{ stats|json_script:"report-data" }}
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'vendor/chartjs/chart.umd.js' %}"></script>
+<script src="{% static 'js/report-charts.js' %}"></script>
+{% endblock %}

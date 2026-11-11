@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.4 (draft) |
+| **Version** | 0.5 (draft) |
 | **Date** | 2026-11-11 |
 | **Status** | Living document — updated as the system evolves |
 
@@ -113,6 +113,8 @@ These will be settled as we build:
 7. At very low densities a small absolute difference is a large percentage (e.g. 16 vs 40/µL = 86%). Should the density check only apply above a minimum density, or use a different method (e.g. log ratio)?
 8. Hematology double readings aren't compared automatically (there's no positive/negative). Should differential counts be compared, and with what tolerance?
 9. Should project leads also be able to approve and lock results, or only data reviewers (current setting)?
+10. Should exports be restricted to certain roles (currently any project member can export what they can see; every export is logged)?
+11. NFR-8 (search over 1 million results in under 3 seconds) hasn't been load-tested yet; it should be checked on PostgreSQL before go-live.
 
 ## 7. Implementation status
 
@@ -133,7 +135,9 @@ These will be settled as we build:
 | FR-13 Discordance flags with configurable threshold | ✅ Done (difference as % of the two readings' mean; default 50%) | 3 |
 | FR-14 Tie-breaker and final-result rule | ✅ Done: "tie-breaker decides" or "majority, mean of the two closest" | 3 |
 | FR-15 Reviewer approves and locks; unlock needs a reason | ✅ Done, including bulk approval from a review queue | 3 |
-| FR-16 – FR-18 Search, dashboards, export | Partly: per-project results list filtered by smear type, result and species is done; cross-project search planned | 4 |
+| FR-16 Search across projects | ✅ Done: project(s), smear type, result, species, QC status, site, collection dates, density range, IDs | 4 |
+| FR-17 Summary dashboards | ✅ Done: positivity, geometric mean density, species, density bands, monthly trend, reader disagreement, by project | 4 |
+| FR-18 Export to Excel/CSV | ✅ Done: final results + per-smear-type readings sheets + filters/metadata sheet; every export logged | 4 |
 | FR-19 – FR-20 Import | Planned | 5 |
 | FR-21 Accounts, deactivate not delete | ✅ Done | 1 |
 | FR-22 Audit trail | ✅ Done for all Phase 1 records, with a History page on each | 1 |
@@ -147,3 +151,4 @@ These will be settled as we build:
 | 0.2 | 2026-11-11 | Added implementation status after Phase 1 |
 | 0.3 | 2026-11-11 | Phase 2 status: smear types, result entry, calculations |
 | 0.4 | 2026-11-11 | Phase 3 status: double reading, discordance, tie-breaker, locking; open questions 7–9 |
+| 0.5 | 2026-11-11 | Phase 4 status: cross-project search, dashboards, exports; open questions 10–11 |

@@ -16,6 +16,7 @@ urlpatterns = [
         auth_views.PasswordChangeView.as_view(success_url="/"),
         name="password_change",
     ),
+    path("", include("apps.reports.urls")),
     path("projects/", include("apps.projects.urls")),
     path("projects/<slug:code>/", include("apps.samples.urls")),
     path("projects/<slug:code>/", include("apps.smears.urls")),

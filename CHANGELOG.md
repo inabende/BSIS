@@ -1,5 +1,16 @@
 # Changelog
 
+## Phase 4 — 2026-11-11
+
+**Added**
+- **Search** across all the user's projects: project(s), IDs, smear type, final result, species, QC status, site, collection dates, density range.
+- **Export** of any search to Excel (final results sheet, one readings sheet per smear type with every field as a column, an About sheet with filters and definitions) or CSV (final results). Also from each project's results page.
+- Exports leave out readings still being read blind (except for reviewers/admins), guard against spreadsheet formula injection, and are **logged** (Administration → Export logs).
+- **Reports dashboard**: positivity, geometric mean density, reader disagreement rate, slides still being read, approved count; charts for positivity by project, monthly positivity, slides per month, species, density bands and disagreement by project, each with a data table; summary by project.
+- Search and Reports in the top menu; guide for staff ([docs/05-search-reports-guide.md](docs/05-search-reports-guide.md)).
+- Chart.js stored locally for offline use.
+- 19 new automated tests (121 in total).
+
 ## Phase 3 — 2026-11-11
 
 **Added**
