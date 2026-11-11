@@ -18,5 +18,6 @@ urlpatterns = [
     ),
     path("projects/", include("apps.projects.urls")),
     path("projects/<slug:code>/", include("apps.samples.urls")),
+    path("projects/<slug:code>/", include("apps.smears.urls")),
     path("admin/", admin.site.urls),
 ]

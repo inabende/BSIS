@@ -171,6 +171,11 @@ class SampleDetailView(SampleMixin, DetailView):
     def get_object(self):
         return self.get_sample()
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["slides"] = self.object.slides.select_related("smear_type").prefetch_related("readings__reader")
+        return context
+
 
 class SampleUpdateView(SampleMixin, UpdateView):
     required_permission = "enter_data"

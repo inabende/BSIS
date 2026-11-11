@@ -29,12 +29,49 @@ class ProjectForm(BootstrapFormMixin, forms.ModelForm):
             "sites": forms.CheckboxSelectMultiple(),
         }
 
+    smear_types = forms.ModelMultipleChoiceField(
+        queryset=None,
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Smear types recorded in this project",
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        from apps.smears.models import SmearType
+
         self.fields["sites"].queryset = Site.objects.filter(is_active=True)
+        self.fields["smear_types"].queryset = SmearType.objects.filter(is_active=True)
         if self.instance.pk:
             # The code appears in URLs and sample labels, so it can't change once created.
             self.fields["code"].disabled = True
+            self.initial["smear_types"] = list(
+                self.instance.smear_type_links.values_list("smear_type_id", flat=True)
+            )
+        else:
+            self.initial["smear_types"] = list(
+                SmearType.objects.filter(is_active=True, is_builtin=True).values_list("pk", flat=True)
+            )
+
+    def save(self, commit=True):
+        project = super().save(commit)
+        if commit:
+            self.save_smear_types()
+        return project
+
+    def save_smear_types(self):
+        from apps.smears.models import ProjectSmearType
+
+        chosen = set(self.cleaned_data.get("smear_types") or [])
+        links = self.instance.smear_type_links.select_related("smear_type")
+        for link in links:
+            # Only unlink active types shown on the form; inactive ones stay as they were.
+            if link.smear_type.is_active and link.smear_type not in chosen:
+                link.delete()
+        existing = {link.smear_type_id for link in self.instance.smear_type_links.all()}
+        for smear_type in chosen:
+            if smear_type.pk not in existing:
+                ProjectSmearType.objects.create(project=self.instance, smear_type=smear_type)
 
 
 class ProjectStatusForm(BootstrapFormMixin, forms.Form):

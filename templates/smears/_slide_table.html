@@ -1,0 +1,28 @@
+{% if slides %}
+<div class="table-responsive">
+<table class="table table-hover table-sm mb-0">
+  <thead class="table-light"><tr>
+    <th>Slide ID</th>{% if show_sample %}<th>Sample</th><th>Participant</th>{% endif %}<th>Smear type</th><th>Result</th><th>Read</th><th>Reader</th>
+  </tr></thead>
+  <tbody>
+  {% for slide in slides %}
+    {% with reading=slide.primary_reading %}
+    <tr>
+      <td><a class="fw-semibold" href="{% url 'smears:slide_detail' project.code slide.pk %}">{{ slide.slide_id }}</a></td>
+      {% if show_sample %}
+        <td><a href="{% url 'samples:sample_detail' project.code slide.sample_id %}">{{ slide.sample }}</a></td>
+        <td>{{ slide.sample.participant }}</td>
+      {% endif %}
+      <td>{{ slide.smear_type.name }}</td>
+      <td>{% include "smears/_result_summary.html" %}</td>
+      <td class="text-nowrap">{{ reading.read_at|date:"d M Y" }}</td>
+      <td>{{ reading.reader|default:"" }}</td>
+    </tr>
+    {% endwith %}
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="text-muted mb-0">No smear results yet.</p>
+{% endif %}

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.2 (draft) |
+| **Version** | 0.3 (draft) |
 | **Date** | 2026-11-11 |
 | **Related** | [01-requirements.md](01-requirements.md) |
 
@@ -47,7 +47,7 @@ flowchart LR
 
 The Django project is split into apps, each owning one area:
 
-Built so far (Phase 1): `core`, `accounts`, `projects`, `samples`. The others arrive in later phases.
+Built so far: `core`, `accounts`, `projects`, `samples` (Phase 1) and `smears` (Phase 2). The others arrive in later phases.
 
 ```mermaid
 flowchart TB
@@ -81,7 +81,7 @@ bsintegratedsystem/
 │   ├── accounts/
 │   ├── projects/         # includes permissions.py: the single place for access rules
 │   ├── samples/
-│   ├── smears/           # Phase 2
+│   ├── smears/           # smear types, slides, readings; dynamic.py + calculations.py
 │   ├── qc/               # Phase 3
 │   ├── reports/          # Phase 4
 │   ├── imports/          # Phase 5
@@ -106,14 +106,19 @@ Each app keeps its tests in `apps/<app>/tests/`.
 | `/projects/<code>/participants/<id>/` | Participant with their samples |
 | `/projects/<code>/participants/<id>/samples/new/` | Add a sample |
 | `/projects/<code>/samples/` | All samples in the project (search, filter by site) |
-| `/projects/<code>/samples/<id>/` | Sample (slides and results from Phase 2) |
-| `/admin/` | Administration (system admins only): users, sites |
+| `/projects/<code>/samples/<id>/` | Sample with its slides and results |
+| `/projects/<code>/samples/<id>/smears/new/` | Record a smear result (slide + first reading) |
+| `/projects/<code>/smears/fields/?smear_type=<id>` | HTMX: result fields for a smear type |
+| `/projects/<code>/results/` | All smear results in the project (filter by type, result, species) |
+| `/projects/<code>/slides/<id>/` · `edit/` · `history/` | Slide with its readings · edit slide details · history of slide and readings |
+| `/projects/<code>/slides/<id>/readings/<id>/edit/` | Edit a reading (recalculates) |
+| `/admin/` | Administration (system admins only): users, sites, smear types and their fields |
 
 The project code appears in every address, and every page checks that the record really belongs to that project, so a user can't reach another project's data by editing the address.
 
 ## 4. Data model
 
-Entities built in Phase 1: USER, SITE, PROJECT, PROJECT_MEMBERSHIP, PARTICIPANT, SAMPLE. Every one of them keeps a full change history.
+Built so far: USER, SITE, PROJECT, PROJECT_MEMBERSHIP, PARTICIPANT, SAMPLE (Phase 1); SMEAR_TYPE, FIELD_DEFINITION, PROJECT_SMEAR_TYPE, SLIDE, READING (Phase 2). Every one of them keeps a full change history. FINAL_RESULT arrives in Phase 3.
 
 ```mermaid
 erDiagram
@@ -146,15 +151,22 @@ erDiagram
     SMEAR_TYPE {
         string code UK "malaria_thick, malaria_thin, hematology"
         string name
+        string slide_suffix "TK, TN, HM"
+        string calculation "thick_density, thin_parasitaemia, hematology_differential, none"
         bool is_builtin
+        bool is_active
     }
     FIELD_DEFINITION {
-        string key
+        string key "unique per smear type"
         string label
-        string data_type "number, text, choice, multichoice, bool, date"
-        json choices
+        string data_type "integer, decimal, text, longtext, choice, multichoice, boolean, date"
+        text choices "one per line: value = Label"
         bool required
-        int order
+        bool required_if_positive
+        decimal min_value
+        decimal max_value
+        string unit
+        bool is_active "deactivate, never delete"
     }
     USER {
         string username UK
@@ -179,16 +191,20 @@ erDiagram
         datetime collected_at "can't be in the future"
     }
     SLIDE {
-        string slide_id UK
+        string slide_id "unique per project, fixed once created"
+        string stain "Giemsa, Field's, Wright..."
+        date prepared_on
         string status "pending, reading, discordant, final"
     }
     READING {
         int reader_number "1, 2, 3 = tie-breaker"
-        bool is_positive
-        string species
-        decimal density_per_ul
-        json values "smear-type-specific fields"
         datetime read_at
+        string microscope
+        bool is_positive "calculated"
+        string species "calculated: pf, pv... or mixed"
+        decimal density_per_ul "calculated"
+        decimal parasitaemia_pct "calculated"
+        json values "smear-type-specific fields + derived values"
     }
     FINAL_RESULT {
         bool is_positive
@@ -207,14 +223,47 @@ Different smear types need different fields, and admins must be able to add new 
 - **Common, frequently searched values** (`is_positive`, `species`, `density_per_ul`) are **real database columns**, so cross-project searches are fast and simple.
 - **Type-specific values** (stage counts, differential counts, morphology) go in a **JSON `values` field** validated against that smear type's `FIELD_DEFINITION` rows. PostgreSQL JSONB indexes keep these searchable.
 
-The data-entry form is built at runtime from the field definitions, so a new smear type works without code changes.
+The data-entry form is built at runtime from the field definitions (`apps/smears/dynamic.py`), so a new smear type works without code changes.
+
+Two field keys have special meaning for any smear type, built-in or custom:
+- **`result`** (options `positive` / `negative`) fills the searchable `is_positive` column, and switches on "required if positive" fields.
+- **`species`** (options `pf`, `pv`, `pm`, `po`, `pk`, `unidentified`) fills the searchable `species` column. Ticking more than one gives `mixed`.
+
+**How a result is saved:**
+
+```mermaid
+sequenceDiagram
+    actor Reader
+    participant Form as Record smear result page
+    participant Dyn as Dynamic form (dynamic.py)
+    participant Calc as Calculations (calculations.py)
+    participant DB as Database
+
+    Reader->>Form: Choose smear type
+    Form->>Dyn: HTMX request for that type's fields
+    Dyn-->>Form: Fields built from FIELD_DEFINITION rows
+    Reader->>Form: Enter values, save
+    Form->>Dyn: Check each field (type, limits, required)
+    Form->>Calc: Check values make sense together; calculate
+    alt problems found
+        Calc-->>Form: Messages shown on the right fields; nothing saved
+    else all good
+        Form->>DB: Save slide + reading (searchable columns + JSON values) in one transaction
+    end
+```
 
 ### 4.2 Calculations
 
-Calculations run on the server whenever a reading is saved, so they're always consistent:
+Calculations run on the server whenever a reading is saved or edited, so they're always consistent (`apps/smears/calculations.py`). Each smear type names the calculation it uses.
 
-- **Thick:** `density_per_ul = parasites_counted / wbc_counted × wbc_per_ul` (from the reading, else the project default, else 8,000)
-- **Thin:** `parasitaemia_pct = infected_rbc / rbc_counted × 100`
+| Calculation | Formula | Consistency checks |
+|---|---|---|
+| **Thick density** | `density/µL = asexual parasites ÷ WBCs counted × WBC/µL`, where WBC/µL is the measured count if entered, else the project default, else 8,000. Gametocyte density uses the same formula. | Positive needs parasites or gametocytes counted. Negative can't have parasites, gametocytes or species. Counting gametocytes ticks "gametocytes seen". |
+| **Thin parasitaemia** | `parasitaemia % = infected RBCs ÷ RBCs counted × 100` | Infected can't exceed counted. Positive needs infected RBCs or stages. Negative can't have infected RBCs, stages or species. |
+| **Hematology differential** | Total of the differential percentages | If any differential is entered, the total must be exactly 100%. |
+| **None** (custom types) | — | Only the per-field rules (required, min/max), and "required if positive". |
+
+Densities are stored to 2 decimal places and shown as whole numbers; parasitaemia to 4 decimal places.
 
 ## 5. Key workflows
 
@@ -233,6 +282,8 @@ stateDiagram-v2
 ```
 
 Projects that use only one reader can be configured to go straight from the first reading to **Final**.
+
+**Current state (Phase 2):** every slide is single-reader. Saving the first reading sets the slide to **Final**. Phase 3 adds second readers, discordance checks, tie-breakers and locking.
 
 ### 5.2 Importing existing study data
 
@@ -324,6 +375,11 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | D7 | Project codes, participant IDs and sample IDs can't change after creation | They link to paper records and slide labels; changing them would break traceability | 2026-11-11 |
 | D8 | Non-members get "not found" rather than "not allowed" | Doesn't reveal which projects exist | 2026-11-11 |
 | D9 | Sample stores its project directly (as well as via participant) | Sample IDs can be unique per project; cross-project searches stay simple | 2026-11-11 |
+| D10 | Calculations live in code and each smear type picks one by name | Formulas need testing and must never be broken by a typo in the admin screen; field lists stay configurable | 2026-11-11 |
+| D11 | Built-in types and fields are created by a database migration | Every installation gets identical definitions; field keys used by calculations can't be renamed in admin | 2026-11-11 |
+| D12 | Smear types and fields are deactivated, never deleted | Saved readings refer to them; deleting would orphan data | 2026-11-11 |
+| D13 | A slide's smear type and ID are fixed once recorded | Its result fields depend on the type; the ID is on the physical slide label | 2026-11-11 |
+| D14 | Slide and first reading are recorded on one page | Fewer steps for the common case; Phase 3 adds later readers from the slide page | 2026-11-11 |
 
 ## 9. Change log
 
@@ -331,3 +387,4 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 |---|---|---|
 | 0.1 | 2026-11-11 | Initial architecture |
 | 0.2 | 2026-11-11 | Phase 1 built: added Site entity, permission matrix, web addresses, configuration variables, decisions D5–D9 |
+| 0.3 | 2026-11-11 | Phase 2 built: smear type data model, result-saving flow, calculation table, web addresses, decisions D10–D14 |

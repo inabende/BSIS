@@ -23,7 +23,10 @@
   <div class="col-sm-6 col-lg-3"><a class="text-decoration-none text-reset" href="{% url 'samples:sample_list' project.code %}"><div class="card stat-card h-100"><div class="card-body">
     <div class="stat-value">{{ sample_count }}</div><div class="stat-label">Samples <i class="bi bi-arrow-right"></i></div>
   </div></div></a></div>
-  <div class="col-lg-6 d-flex align-items-center gap-2">
+  <div class="col-sm-6 col-lg-3"><a class="text-decoration-none text-reset" href="{% url 'smears:results' project.code %}"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ slide_count }}</div><div class="stat-label">Smear results <i class="bi bi-arrow-right"></i></div>
+  </div></div></a></div>
+  <div class="col-sm-6 col-lg-3 d-flex align-items-center gap-2">
     {% if perms_project.can_enter_data %}
       <a class="btn btn-brand" href="{% url 'samples:participant_create' project.code %}"><i class="bi bi-person-plus"></i> Register participant</a>
     {% endif %}
@@ -39,6 +42,7 @@
         <dt>Protocol / ethics ID</dt><dd>{{ project.protocol_id|default:"—" }}</dd>
         <dt>Dates</dt><dd>{{ project.start_date|date:"d M Y"|default:"?" }} – {{ project.end_date|date:"d M Y"|default:"ongoing" }}</dd>
         <dt>Sites</dt><dd>{% for s in project.sites.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+        <dt>Smear types</dt><dd>{% for t in smear_types %}<span class="badge text-bg-light border me-1">{{ t.name }}</span>{% empty %}—{% endfor %}</dd>
         <dt>Default WBC/µL</dt><dd>{{ project.default_wbc_per_ul }}</dd>
         <dt>Created</dt><dd>{{ project.created_at|date:"d M Y" }}{% if project.created_by %} by {{ project.created_by }}{% endif %}</dd>
       </dl>

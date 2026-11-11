@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Edit slide {{ object }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb_participant=object.sample.participant crumb="Edit slide" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card"><div class="card-body p-4">
+      <h1 class="h4 mb-1">Edit slide {{ object }}</h1>
+      <p class="small text-muted">The smear type and slide ID can't be changed once recorded.</p>
+      <form method="post" novalidate>{% csrf_token %}
+        {% include "core/_form.html" %}
+        <button class="btn btn-brand" type="submit">Save changes</button>
+        <a class="btn btn-link" href="{% url 'smears:slide_detail' project.code object.pk %}">Cancel</a>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

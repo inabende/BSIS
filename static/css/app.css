@@ -33,3 +33,15 @@ body { background: #f5f6f8; }
 .checkbox-list { max-height: 220px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: .375rem; padding: .5rem .75rem; background: #fff; }
 .checkbox-list label { display: block; margin: .15rem 0; }
 .checkbox-list input { margin-right: .4rem; }
+.checkbox-list.checkbox-inline { max-height: none; }
+.checkbox-list.checkbox-inline label { display: inline-block; margin-right: 1.25rem; }
+.radio-inline input { margin-right: .35rem; }
+
+.has-error .checkbox-list, .has-error .radio-inline { border-color: var(--bs-danger); }
+
+.form-section-title { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: #6c757d; font-weight: 600; margin-bottom: .75rem; }
+
+.result-badge { font-size: .85rem; }
+.result-value { font-size: 1.5rem; font-weight: 600; line-height: 1.1; }
+
+#smear-fields.htmx-request { opacity: .5; transition: opacity .2s; }

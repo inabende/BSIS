@@ -77,6 +77,8 @@ class ProjectDetailView(ProjectAccessMixin, DetailView):
         context["memberships"] = self.project.memberships.select_related("user")
         context["participant_count"] = self.project.participants.count()
         context["sample_count"] = self.project.samples.count()
+        context["slide_count"] = self.project.slides.count()
+        context["smear_types"] = [link.smear_type for link in self.project.smear_type_links.select_related("smear_type")]
         context["recent_samples"] = self.project.samples.select_related("participant", "site")[:10]
         return context
 

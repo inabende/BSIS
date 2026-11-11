@@ -1,5 +1,23 @@
 # Changelog
 
+## Phase 2 — 2026-11-11
+
+**Added**
+- Smear types with configurable fields. Built in: malaria thick, malaria thin and general hematology. Admins can add custom types and fields without code changes ([admin guide](docs/03-admin-guide.md)).
+- Each project chooses which smear types it records. New projects start with all built-in types.
+- **Record smear result** page on each sample: choose the smear type and its fields load in place; slide and first reading are saved together. Slide IDs are suggested from the sample ID (e.g. `SM-001-TK`).
+- Automatic calculations: thick smear parasite and gametocyte density (measured WBC/µL, else project default, else 8,000), thin smear parasitaemia %, hematology differential total.
+- Consistency checks, e.g. a negative slide can't have parasites or species; infected RBCs can't exceed RBCs counted; the differential must total 100%; species required for a positive slide.
+- Slide page showing each reading with its calculated values; edit slide and edit reading (recalculates); combined history of slide and readings, listing each changed result field.
+- Project **Smear results** list, filterable by smear type, result and species.
+- Demo data now includes thick and thin results.
+- 30 new automated tests (64 in total).
+
+**Changed**
+- Sample page lists its slides and results.
+- Project page shows a smear results count and the project's smear types.
+- Forms show units beside number fields and mark "required if positive" fields.
+
 ## Phase 1 — 2026-11-11
 
 **Added**

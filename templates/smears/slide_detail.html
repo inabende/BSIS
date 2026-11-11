@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Slide {{ slide }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb_participant=slide.sample.participant crumb=slide.slide_id %}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1"><i class="bi bi-file-earmark-medical"></i> Slide {{ slide }}</h1>
+    <span class="badge text-bg-light border">{{ slide.smear_type.name }}</span>
+    <span class="badge {% if slide.status == 'final' %}text-bg-primary{% elif slide.status == 'discordant' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ slide.get_status_display }}</span>
+  </div>
+  <div class="btn-group">
+    {% if perms_project.can_enter_data %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'smears:slide_update' project.code slide.pk %}"><i class="bi bi-pencil"></i> Edit slide</a>{% endif %}
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'smears:slide_history' project.code slide.pk %}"><i class="bi bi-clock-history"></i> History</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card"><div class="card-body">
+      <h2 class="h5 mb-3">Slide</h2>
+      <dl class="dl-grid">
+        <dt>Sample</dt><dd><a href="{% url 'samples:sample_detail' project.code slide.sample.pk %}">{{ slide.sample }}</a></dd>
+        <dt>Participant</dt><dd><a href="{% url 'samples:participant_detail' project.code slide.sample.participant.pk %}">{{ slide.sample.participant }}</a></dd>
+        <dt>Visit</dt><dd>{{ slide.sample.visit|default:"—" }}</dd>
+        <dt>Stain</dt><dd>{{ slide.get_stain_display }}</dd>
+        <dt>Prepared</dt><dd>{{ slide.prepared_on|date:"d M Y"|default:"—" }}</dd>
+        <dt>Recorded</dt><dd>{{ slide.created_at|date:"d M Y" }}{% if slide.created_by %} by {{ slide.created_by }}{% endif %}</dd>
+      </dl>
+      {% if slide.notes %}<p class="mt-3 mb-0 small">{{ slide.notes|linebreaksbr }}</p>{% endif %}
+    </div></div>
+  </div>
+
+  <div class="col-lg-8">
+    {% for reading, rows in readings %}
+    <div class="card mb-4"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h2 class="h5 mb-1">Reader {{ reading.reader_number }}{% if reading.reader_number == 3 %} (tie-breaker){% endif %}: {{ reading.reader }}</h2>
+          <div class="small text-muted">Read {{ reading.read_at|date:"d M Y, H:i" }}{% if reading.site %} at {{ reading.site.name }}{% endif %}{% if reading.microscope %} · microscope {{ reading.microscope }}{% endif %}</div>
+        </div>
+        {% if perms_project.can_enter_data %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'smears:reading_update' project.code slide.pk reading.pk %}"><i class="bi bi-pencil"></i> Edit reading</a>{% endif %}
+      </div>
+
+      <div class="row g-3 mb-3">
+        {% if reading.is_positive is not None %}
+        <div class="col-auto"><div class="small text-muted">Result</div>
+          <div class="result-value {% if reading.is_positive %}text-danger{% else %}text-success{% endif %}">{{ reading.result_label }}</div></div>
+        {% endif %}
+        {% if reading.species %}
+        <div class="col-auto"><div class="small text-muted">Species</div><div class="result-value fst-italic">{{ reading.get_species_display }}</div></div>
+        {% endif %}
+        {% if reading.density_per_ul is not None %}
+        <div class="col-auto"><div class="small text-muted">Parasite density</div><div class="result-value">{{ reading.density_per_ul|floatformat:"0g" }} <small class="fs-6">/µL</small></div></div>
+        {% endif %}
+        {% if reading.parasitaemia_pct is not None %}
+        <div class="col-auto"><div class="small text-muted">Parasitaemia</div><div class="result-value">{{ reading.parasitaemia_pct|floatformat:"-3" }} <small class="fs-6">%</small></div></div>
+        {% endif %}
+      </div>
+
+      <table class="table table-sm mb-0">
+        <tbody>
+        {% for label, value, unit in rows %}
+          <tr><th class="fw-normal text-muted" style="width: 45%">{{ label }}</th><td>{{ value|linebreaksbr }}{% if unit and value != "" %} {{ unit }}{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if reading.comments %}<p class="mt-3 mb-0 small"><strong>Comments:</strong> {{ reading.comments|linebreaksbr }}</p>{% endif %}
+    </div></div>
+    {% empty %}
+    <div class="card"><div class="card-body text-muted">No readings yet.</div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

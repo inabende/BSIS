@@ -1,0 +1,11 @@
+{# Compact result for a reading: badge + key number. Expects `reading`. #}
+{% if reading %}
+  {% if reading.is_positive is True %}<span class="badge text-bg-danger result-badge">Positive</span>
+  {% elif reading.is_positive is False %}<span class="badge text-bg-success result-badge">Negative</span>
+  {% else %}<span class="badge text-bg-secondary result-badge">Recorded</span>{% endif %}
+  {% if reading.species %}<em class="ms-1">{{ reading.get_species_display }}</em>{% endif %}
+  {% if reading.is_positive and reading.density_per_ul is not None %}<span class="ms-1 text-nowrap">{{ reading.density_per_ul|floatformat:"0g" }}/µL</span>{% endif %}
+  {% if reading.is_positive and reading.parasitaemia_pct is not None %}<span class="ms-1 text-nowrap">{{ reading.parasitaemia_pct|floatformat:"-3" }}%</span>{% endif %}
+{% else %}
+  <span class="text-muted">Not read</span>
+{% endif %}

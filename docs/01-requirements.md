@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.2 (draft) |
+| **Version** | 0.3 (draft) |
 | **Date** | 2026-11-11 |
 | **Status** | Living document — updated as the system evolves |
 
@@ -116,14 +116,18 @@ These will be settled as we build:
 | Requirement | Status | Phase |
 |---|---|---|
 | FR-1 Create projects | ✅ Done | 1 |
-| FR-2 Allowed smear types per project | Planned | 2 |
+| FR-2 Allowed smear types per project | ✅ Done (new projects start with all built-in types ticked) | 2 |
 | FR-3 Active / closed / archived | ✅ Done (status change needs a reason; only admins reopen) | 1 |
 | FR-4 Participants by study ID | ✅ Done (plus optional sex, year of birth, enrolment site and date) | 1 |
 | FR-5 Samples per participant | ✅ Done | 1 |
-| FR-6 Several smears per sample | Planned | 2 |
-| FR-7 – FR-11 Smear types, fields, calculations | Planned | 2 |
+| FR-6 Several smears per sample | ✅ Done | 2 |
+| FR-7 Choose smear type, form shows its fields | ✅ Done (fields swap in place when the type changes) | 2 |
+| FR-8 Built-in thick, thin, hematology fields | ✅ Done (plus fields examined, gametocyte density, RBC morphology list, incidental parasites) | 2 |
+| FR-9 Admin-defined smear types and fields | ✅ Done via Administration → Smear types; see [03-admin-guide.md](03-admin-guide.md) | 2 |
+| FR-10 Calculations | ✅ Done, plus consistency checks (e.g. negative slide with parasites, differential ≠ 100%) | 2 |
+| FR-11 Slide ID, reader, date, microscope/site, comments | ✅ Done | 2 |
 | FR-12 – FR-15 Readers, discordance, locking | Planned | 3 |
-| FR-16 – FR-18 Search, dashboards, export | Partly: search within a project done; cross-project search planned | 4 |
+| FR-16 – FR-18 Search, dashboards, export | Partly: per-project results list filtered by smear type, result and species is done; cross-project search planned | 4 |
 | FR-19 – FR-20 Import | Planned | 5 |
 | FR-21 Accounts, deactivate not delete | ✅ Done | 1 |
 | FR-22 Audit trail | ✅ Done for all Phase 1 records, with a History page on each | 1 |
@@ -135,3 +139,4 @@ These will be settled as we build:
 |---|---|---|
 | 0.1 | 2026-11-11 | Initial draft from first design discussion |
 | 0.2 | 2026-11-11 | Added implementation status after Phase 1 |
+| 0.3 | 2026-11-11 | Phase 2 status: smear types, result entry, calculations |

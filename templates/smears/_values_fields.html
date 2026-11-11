@@ -1,0 +1,14 @@
+{# Result fields for the chosen smear type. Swapped in by HTMX when the type changes. #}
+{% if values_form %}
+  {% if smear_type.description %}<p class="small text-muted mb-3"><i class="bi bi-info-circle"></i> {{ smear_type.description }}</p>{% endif %}
+  {% include "core/_form.html" with form=values_form %}
+  {% if smear_type.calculation == "thick_density" %}
+    <p class="small text-muted mb-0"><i class="bi bi-calculator"></i> Parasite density is calculated when you save: parasites ÷ WBCs counted × WBC/µL.</p>
+  {% elif smear_type.calculation == "thin_parasitaemia" %}
+    <p class="small text-muted mb-0"><i class="bi bi-calculator"></i> Parasitaemia % is calculated when you save: infected RBCs ÷ RBCs counted × 100.</p>
+  {% elif smear_type.calculation == "hematology_differential" %}
+    <p class="small text-muted mb-0"><i class="bi bi-calculator"></i> If you enter a differential count, it must total 100%.</p>
+  {% endif %}
+{% else %}
+  <p class="text-muted mb-0">Choose a smear type above to see its result fields.</p>
+{% endif %}

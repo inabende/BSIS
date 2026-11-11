@@ -26,8 +26,11 @@
   </div>
   <div class="col-lg-7">
     <div class="card"><div class="card-body">
-      <h2 class="h5 mb-2">Slides and smear results</h2>
-      <p class="text-muted mb-0">Recording thick, thin and hematology smear results for this sample arrives in Phase 2.</p>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">Slides and smear results</h2>
+        {% if perms_project.can_enter_data %}<a class="btn btn-brand btn-sm" href="{% url 'smears:smear_record' project.code sample.pk %}"><i class="bi bi-plus-lg"></i> Record smear result</a>{% endif %}
+      </div>
+      {% include "smears/_slide_table.html" %}
     </div></div>
   </div>
 </div>

@@ -23,6 +23,16 @@ def _display(record, field_name, value):
     return value
 
 
+def _plain(value):
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    if value is True:
+        return "Yes"
+    if value is False:
+        return "No"
+    return value
+
+
 def history_rows(obj, limit=50):
     """Newest first: date, user, action, and a list of (field label, old, new)."""
     rows = []
@@ -34,6 +44,13 @@ def history_rows(obj, limit=50):
             delta = record.diff_against(previous)
             for change in delta.changes:
                 if change.field in HIDDEN_FIELDS:
+                    continue
+                if isinstance(change.old, dict) or isinstance(change.new, dict):
+                    # JSON fields (e.g. smear result values): list each changed key.
+                    old, new = change.old or {}, change.new or {}
+                    for key in sorted(set(old) | set(new)):
+                        if old.get(key) != new.get(key):
+                            changes.append((key.replace("_", " ").capitalize(), _plain(old.get(key)), _plain(new.get(key))))
                     continue
                 try:
                     label = record.instance_type._meta.get_field(change.field).verbose_name

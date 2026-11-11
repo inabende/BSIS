@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Record smear result – {{ sample }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb_participant=sample.participant crumb="Record smear result" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-9">
+    <h1 class="h4 mb-1">Record smear result</h1>
+    <p class="text-muted">Sample <a href="{% url 'samples:sample_detail' project.code sample.pk %}">{{ sample }}</a> · participant {{ sample.participant }} · {{ sample.visit|default:"no visit" }} · collected {{ sample.collected_at|date:"d M Y, H:i" }}</p>
+
+    {% if no_types %}
+      <div class="alert alert-warning">This project has no smear types switched on. A project lead can choose them under <a href="{% url 'projects:update' project.code %}">Edit project</a>.</div>
+    {% else %}
+    <form method="post" novalidate>{% csrf_token %}
+      <div class="row g-4">
+        <div class="col-lg-5">
+          <div class="card mb-4"><div class="card-body">
+            <div class="form-section-title">1 · Slide</div>
+            {% if slide_form.non_field_errors %}<div class="alert alert-danger">{{ slide_form.non_field_errors }}</div>{% endif %}
+            <div class="mb-3">
+              <label class="form-label" for="{{ slide_form.smear_type.id_for_label }}">Smear type <span class="text-danger">*</span></label>
+              <select name="smear_type" id="{{ slide_form.smear_type.id_for_label }}" class="form-select{% if slide_form.smear_type.errors %} is-invalid{% endif %}"
+                      hx-get="{% url 'smears:smear_fields' project.code %}" hx-target="#smear-fields" hx-trigger="change" hx-indicator="#smear-fields">
+                {% for value, label in slide_form.smear_type.field.choices %}
+                  <option value="{{ value }}" {% if slide_form.smear_type.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% for e in slide_form.smear_type.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+            {% for field in slide_form %}{% if field.name != "smear_type" %}
+              <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+              </div>
+            {% endif %}{% endfor %}
+          </div></div>
+
+          <div class="card"><div class="card-body">
+            <div class="form-section-title">2 · Reading</div>
+            {% include "core/_form.html" with form=reading_form %}
+          </div></div>
+        </div>
+
+        <div class="col-lg-7">
+          <div class="card h-100"><div class="card-body">
+            <div class="form-section-title">3 · Result</div>
+            <div id="smear-fields">{% include "smears/_values_fields.html" %}</div>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-brand" type="submit"><i class="bi bi-check-lg"></i> Save result</button>
+        <button class="btn btn-outline-primary" type="submit" name="save_another" value="1">Save and record another slide</button>
+        <a class="btn btn-link" href="{% url 'samples:sample_detail' project.code sample.pk %}">Cancel</a>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

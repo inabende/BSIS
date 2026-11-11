@@ -8,13 +8,16 @@
 <div class="card"><div class="card-body">
   {% if rows %}
   <table class="table">
-    <thead><tr><th style="width: 12rem">When</th><th style="width: 10rem">Who</th><th style="width: 7rem">Action</th><th>Details</th></tr></thead>
+    <thead><tr><th style="width: 12rem">When</th><th style="width: 10rem">Who</th><th style="width: 9rem">Action</th><th>Details</th></tr></thead>
     <tbody>
     {% for row in rows %}
       <tr>
         <td class="text-nowrap">{{ row.date|date:"d M Y, H:i" }}</td>
         <td>{{ row.user|default:"System" }}</td>
-        <td><span class="badge {% if row.action == 'Created' %}text-bg-success{% elif row.action == 'Deleted' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{{ row.action }}</span></td>
+        <td>
+          <span class="badge {% if row.action == 'Created' %}text-bg-success{% elif row.action == 'Deleted' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{{ row.action }}</span>
+          {% if row.record %}<div class="small text-muted">{{ row.record }}</div>{% endif %}
+        </td>
         <td>
           {% for label, old, new in row.changes %}
             <div><strong>{{ label }}:</strong> <span class="text-decoration-line-through text-muted">{{ old|default:"(blank)" }}</span> → {{ new|default:"(blank)" }}</div>
