@@ -1,0 +1,7 @@
+{# Wizard progress. Expects `step` (1–4). #}
+<ol class="import-steps mb-4">
+  <li class="{% if step == 1 %}current{% elif step > 1 %}done{% endif %}">1 · Upload file</li>
+  <li class="{% if step == 2 %}current{% elif step > 2 %}done{% endif %}">2 · Match columns</li>
+  <li class="{% if step == 3 %}current{% elif step > 3 %}done{% endif %}">3 · Check rows</li>
+  <li class="{% if step == 4 %}current done{% endif %}">4 · Import</li>
+</ol>

@@ -1,5 +1,19 @@
 # Changelog
 
+## Phase 5 — 2026-11-11
+
+**Added**
+- **Import of existing study results** from Excel (.xlsx) or CSV, for project leads: upload → match columns → check every row → import. Nothing is saved before confirmation.
+- Automatic column matching from common names (e.g. *Study No, PTID* → Participant ID; *BS for MPs* → Result), showing each column's first values.
+- Forgiving cell parsing: real or text dates (day/month/year by default), *Pos/+/MPS seen/NMPS*, *Pf + Pm*, *1,200*, Excel times, `1001.0` IDs.
+- Row checks use the same rules and calculations as manual entry, plus import-specific ones (future dates, unknown sites, sample owned by another participant, duplicate slides in file or project).
+- Problem report on screen and as CSV; valid rows import after explicit confirmation; re-importing skips slides already present.
+- Density-only legacy files accepted (*Parasite density / Parasitaemia as recorded*), with a warning when recorded and calculated densities differ.
+- Unmatched reader names kept on the reading; imported slides show their source import; history notes *Imported from <file> (import #N)*; original files kept for audit and downloadable by leads.
+- Excel templates per smear type with instructions; example legacy file for training (`docs/examples/`).
+- Import guide ([docs/06-import-guide.md](docs/06-import-guide.md)).
+- 17 new automated tests (138 in total).
+
 ## Phase 4 — 2026-11-11
 
 **Added**

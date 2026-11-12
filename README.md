@@ -11,6 +11,7 @@ One shared system where staff create projects (studies) and record blood smear r
 | [docs/03-admin-guide.md](docs/03-admin-guide.md) | For system admins: smear types, adding custom types and fields |
 | [docs/04-qc-guide.md](docs/04-qc-guide.md) | For leads, readers and reviewers: double reading, tie-breakers, approval and locking |
 | [docs/05-search-reports-guide.md](docs/05-search-reports-guide.md) | For everyone: cross-project search, reports dashboard, Excel/CSV export |
+| [docs/06-import-guide.md](docs/06-import-guide.md) | For project leads: importing existing study spreadsheets ([example file](docs/examples/example-legacy-thick-smears.xlsx)) |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each phase |
 
 Documents are living: each has a version and change log, updated as the system evolves.
@@ -24,8 +25,8 @@ Documents are living: each has a version and change log, updated as the system e
 | 2 | Smear types and result entry (thick, thin, hematology, custom) with auto-calculations | ✅ Done |
 | 3 | Reader 1/2, discordance flags, tie-breaker, locking | ✅ Done |
 | 4 | Cross-project search, dashboards, Excel/CSV export | ✅ Done |
-| 5 | Excel/CSV import of existing study data | Next |
-| 6 | Production deployment, backups, login lockout, user guide | Not started |
+| 5 | Excel/CSV import of existing study data | ✅ Done |
+| 6 | Production deployment, backups, login lockout, user guide | Next |
 
 ## Running it on your computer (development)
 
@@ -79,6 +80,7 @@ On macOS/Linux, use `.venv/bin/python` instead of `.venv/Scripts/python`.
 6. On the sample's page, **Record smear result**: choose the smear type and its fields appear.
 7. Optional: **QC settings** on the project page to double-read smear types; reviewers approve results from the **Review queue**.
 8. **Search** and **Reports** (top menu) cover all your projects; export any search to Excel or CSV.
+9. **Import results** (project page, leads) brings in a study's existing spreadsheets.
 
 ## Technology
 

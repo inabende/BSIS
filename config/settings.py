@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.smears",
     "apps.qc",
     "apps.reports",
+    "apps.imports",
 ]
 
 MIDDLEWARE = [
@@ -139,3 +140,12 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# --- Uploaded files ---------------------------------------------------------
+# Import files are kept for audit. They're never served publicly; only
+# project leads can download them, through a permission-checked page.
+
+MEDIA_ROOT = Path(os.environ.get("BSIS_MEDIA_ROOT", BASE_DIR / "media"))
+MEDIA_URL = "/media/"  # not routed; files are only served via views that check permissions
+DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024

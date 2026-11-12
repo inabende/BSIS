@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.5 (draft) |
+| **Version** | 0.6 (draft) |
 | **Date** | 2026-11-11 |
 | **Related** | [01-requirements.md](01-requirements.md) |
 
@@ -47,7 +47,7 @@ flowchart LR
 
 The Django project is split into apps, each owning one area:
 
-Built so far: `core`, `accounts`, `projects`, `samples` (Phase 1), `smears` (Phase 2), `qc` (Phase 3) and `reports` (Phase 4). The others arrive in later phases.
+Built so far: `core`, `accounts`, `projects`, `samples` (Phase 1), `smears` (Phase 2), `qc` (Phase 3) and `reports` (Phase 4) and `imports` (Phase 5). The separate `audit` app was not needed: every record's history page already serves that purpose.
 
 ```mermaid
 flowchart TB
@@ -84,7 +84,7 @@ bsintegratedsystem/
 │   ├── smears/           # smear types, slides, readings; dynamic.py + calculations.py
 │   ├── qc/               # QC settings, final results; rules.py, services.py, access.py (blinding)
 │   ├── reports/          # search, dashboard, exports; filters.py, stats.py, exports.py, export log
-│   ├── imports/          # Phase 5
+│   ├── imports/          # import batches; parsing.py, engine.py, templates_xlsx.py
 │   └── audit/            # Phase 4+ (history pages already exist per record)
 ├── templates/            # HTML pages, grouped by app
 ├── static/               # app.css + vendor/ (Bootstrap, HTMX, icons)
@@ -116,6 +116,10 @@ Each app keeps its tests in `apps/<app>/tests/`.
 | `/projects/<code>/slides/<id>/lock/` · `unlock/` | Approve and lock · unlock with reason |
 | `/projects/<code>/qc/review/` | Review queue: awaiting reader 2, tie-breaker, approval (bulk approve) |
 | `/projects/<code>/qc/settings/` | QC settings: readers per smear type, threshold, final rule |
+| `/projects/<code>/imports/` · `new/` | Import history and templates · upload a file |
+| `/projects/<code>/imports/<id>/columns/` · `/imports/<id>/` | Match columns · check rows, confirm, and see the result |
+| `/projects/<code>/imports/<id>/problems.csv` · `file/` | Problem report · original uploaded file |
+| `/projects/<code>/imports/template/<smear type id>.xlsx` | Blank template for a smear type |
 | `/search/` | Search final results across all the user's projects |
 | `/search/export.xlsx` · `/search/export.csv` | Download the current search (same filters) |
 | `/reports/` | Reports dashboard (same filters, one smear type at a time) |
@@ -125,7 +129,7 @@ The project code appears in every address, and every page checks that the record
 
 ## 4. Data model
 
-Built so far: USER, SITE, PROJECT, PROJECT_MEMBERSHIP, PARTICIPANT, SAMPLE (Phase 1); SMEAR_TYPE, FIELD_DEFINITION, PROJECT_SMEAR_TYPE, SLIDE, READING (Phase 2); QC_SETTINGS, FINAL_RESULT (Phase 3). Every one of them keeps a full change history. Phase 4 adds EXPORT_LOG (one row per data export; read-only, kept out of the diagram).
+Built so far: USER, SITE, PROJECT, PROJECT_MEMBERSHIP, PARTICIPANT, SAMPLE (Phase 1); SMEAR_TYPE, FIELD_DEFINITION, PROJECT_SMEAR_TYPE, SLIDE, READING (Phase 2); QC_SETTINGS, FINAL_RESULT (Phase 3). Every one of them keeps a full change history. Phase 4 adds EXPORT_LOG (one row per data export; read-only, kept out of the diagram). Phase 5 adds IMPORT_BATCH (project, smear type, original file, options, column mapping, status, counts, problem report, and the slides it created).
 
 ```mermaid
 erDiagram
@@ -359,6 +363,25 @@ sequenceDiagram
     Imp-->>Lead: Summary report
 ```
 
+Built in Phase 5 (`apps/imports/`), as a four-step page: **Upload → Match columns → Check rows → Import**.
+
+| Part | File | What it does |
+|---|---|---|
+| Reading files | `parsing.py` | `.xlsx` (first or chosen sheet) and `.csv` (comma, semicolon or tab; UTF-8 or Windows encodings). Up to 10 MB / 20,000 rows. Header row configurable; blank lines skipped; duplicate column names rejected. |
+| Understanding cells | `parsing.py` | Dates as real Excel dates or text in the chosen order (day/month/year by default); Excel time fractions; `1001.0` → `1001`; `1,200` → 1200. Results: *Pos, +, MPS seen, NMPS, No MPS seen, Neg…*. Species: *Pf, P. falciparum, falciparum…*; *Pf + Pm* → mixed. Sex: *F/M/U, female/male…*. Anything not understood becomes a row error that says what was expected. |
+| Matching columns | `engine.py` | Guesses each target from the column names (e.g. *Study No, PTID, Subject ID* → Participant ID; *BS for MPs, MPS* → Result). The lead confirms or changes each match, seeing the first values of the chosen column. |
+| Checking rows | `engine.py` (`Checker`) | Same rules as manual entry: field types and limits, required fields, "required if positive", and the smear type's calculations and consistency checks. Also: participant ID present; collection date valid and not in the future; site is one of the project's; a sample ID can't belong to two participants; slide IDs unique in the file and the project (existing ones skipped or flagged, as chosen). Nothing is saved. |
+| Importing | `engine.py` (`run_import`) | Re-checks, then saves all valid rows in **one transaction**: participant and sample (reused if they exist), slide, one reading, final result. |
+
+**Rules for imported data:**
+- Imported history is treated as already complete. Each slide gets **one reading** and a **final result straight away**, even on double-read projects (recorded as single-reader), but it is **not locked**, so a reviewer still approves it.
+- **Missing IDs are generated:** sample ID = participant ID + collection date (`PT-001-20260915`); slide ID = sample ID + smear type suffix.
+- **Density-only files:** legacy files often record only the density. The *Parasite density as recorded* (and *Parasitaemia as recorded*) columns are accepted instead of raw counts. If counts are also present, the density is calculated from the counts and a warning is shown when the two differ by more than 5%.
+- **Readers** are matched to project readers/leads by username or full name. Unmatched names are kept on the reading (*Reader named in the imported file*), and the importer is recorded as the reader.
+- **Provenance and audit:** every created record's history says *Imported from <file> (import #N)*. The slide page shows its source batch. The original file is kept (`MEDIA_ROOT/imports/`, never served publicly; leads download it through a permission-checked page). The batch keeps its column mapping, counts and problem report.
+- **Templates:** a ready-made Excel template per smear type (columns + instructions sheet listing allowed values and the project's site codes). Its example rows import cleanly (tested).
+- **Example file** for training: `docs/examples/example-legacy-thick-smears.xlsx`, a typical messy study log, including three rows that are meant to be rejected.
+
 ## 6. Security
 
 ### 6.1 Who can do what
@@ -378,6 +401,7 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | See readings while a slide is read blind | ✅ | own reading only | own reading only | ✅ | ❌ | ❌ |
 | Approve/lock and unlock final results | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Search, reports and export (their own projects only; exports logged) | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Import existing results from Excel/CSV | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 - A closed or archived project is read-only for everyone. Only a system admin can reopen it.
 - A project always keeps at least one lead. The last lead can't be removed or demoted.
@@ -447,6 +471,10 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | D21 | Reports use final results only, one smear type at a time | Keeps blinding intact; avoids double-counting thick + thin from one sample | 2026-11-11 |
 | D22 | Every export is logged; any member can export what they can see | Data governance without blocking statisticians (viewers); can be tightened later | 2026-11-11 |
 | D23 | Statistics computed in the database (counts, log-mean), not in Python | Scales to large datasets (NFR-8) | 2026-11-11 |
+| D24 | Imported slides are single-reader and final, but not locked | Historical results were already settled; reviewers still approve them in the system | 2026-11-11 |
+| D25 | Import checks run through the same calculations as manual entry, with a forgiving cell parser in front | One set of rules for all data; legacy shorthand doesn't have to be cleaned by hand first | 2026-11-11 |
+| D26 | Valid rows import even if others fail, but only after the lead explicitly confirms | Large legacy files rarely come out perfect; failed rows can be fixed and re-imported (existing slides are skipped) | 2026-11-11 |
+| D27 | Original upload files are kept and only downloadable through a permission check | Audit trail back to the source; files may hold study data | 2026-11-11 |
 
 ## 9. Change log
 
@@ -457,3 +485,4 @@ Rules live in one file, `apps/projects/permissions.py`, and every page goes thro
 | 0.3 | 2026-11-11 | Phase 2 built: smear type data model, result-saving flow, calculation table, web addresses, decisions D10–D14 |
 | 0.4 | 2026-11-11 | Phase 3 built: QC data model, slide status/final-result table, blinding and locking rules, permission rows, web addresses, decisions D15–D19 |
 | 0.5 | 2026-11-11 | Phase 4 built: search/report/export flow (§5.2), export log, web addresses, decisions D20–D23 |
+| 0.6 | 2026-11-11 | Phase 5 built: import design (§5.3), import batch entity, web addresses, permission row, decisions D24–D27 |

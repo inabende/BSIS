@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.5 (draft) |
+| **Version** | 0.6 (draft) |
 | **Date** | 2026-11-11 |
 | **Status** | Living document — updated as the system evolves |
 
@@ -115,6 +115,8 @@ These will be settled as we build:
 9. Should project leads also be able to approve and lock results, or only data reviewers (current setting)?
 10. Should exports be restricted to certain roles (currently any project member can export what they can see; every export is logged)?
 11. NFR-8 (search over 1 million results in under 3 seconds) hasn't been load-tested yet; it should be checked on PostgreSQL before go-live.
+12. Imports bring in one (final) reading per slide. Do any studies need their historical reader 1 / reader 2 / tie-breaker readings imported separately?
+13. Should an import be reversible (undo a whole batch) if it turns out to be wrong? Currently imported slides are corrected individually, like any other.
 
 ## 7. Implementation status
 
@@ -138,7 +140,8 @@ These will be settled as we build:
 | FR-16 Search across projects | ✅ Done: project(s), smear type, result, species, QC status, site, collection dates, density range, IDs | 4 |
 | FR-17 Summary dashboards | ✅ Done: positivity, geometric mean density, species, density bands, monthly trend, reader disagreement, by project | 4 |
 | FR-18 Export to Excel/CSV | ✅ Done: final results + per-smear-type readings sheets + filters/metadata sheet; every export logged | 4 |
-| FR-19 – FR-20 Import | Planned | 5 |
+| FR-19 Import with column mapping, validation, preview | ✅ Done: Excel/CSV, automatic column matching, common shorthand understood, nothing saved until confirmed | 5 |
+| FR-20 Report failed rows and why | ✅ Done: on screen and as a downloadable problem report (CSV) | 5 |
 | FR-21 Accounts, deactivate not delete | ✅ Done | 1 |
 | FR-22 Audit trail | ✅ Done for all Phase 1 records, with a History page on each | 1 |
 | NFR-3 Session timeout, password rules | ✅ Done; login lockout planned | 1 / 6 |
@@ -152,3 +155,4 @@ These will be settled as we build:
 | 0.3 | 2026-11-11 | Phase 2 status: smear types, result entry, calculations |
 | 0.4 | 2026-11-11 | Phase 3 status: double reading, discordance, tie-breaker, locking; open questions 7–9 |
 | 0.5 | 2026-11-11 | Phase 4 status: cross-project search, dashboards, exports; open questions 10–11 |
+| 0.6 | 2026-11-11 | Phase 5 status: import of existing study data; open questions 12–13 |

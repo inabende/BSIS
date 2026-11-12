@@ -46,13 +46,17 @@ def _thick(values, project, errors):
     asexual = values.get("asexual_parasites_counted")
     gametocytes = values.get("gametocytes_counted")
     wbc = values.get("wbc_counted")
+    # Imported legacy data may record only the density, not the counts it came from.
+    reported = values.get("density_reported")
 
     if positive:
-        if not asexual and not gametocytes:
+        if not asexual and not gametocytes and reported is None:
             errors["asexual_parasites_counted"] = (
                 "A positive slide needs asexual parasites or gametocytes counted."
             )
     else:
+        if reported:
+            errors["density_reported"] = "A negative slide can't have a parasite density."
         if asexual:
             errors["asexual_parasites_counted"] = "A negative slide can't have parasites counted."
         if gametocytes or values.get("gametocytes_present"):
@@ -69,6 +73,8 @@ def _thick(values, project, errors):
         out["density_per_ul"] = _dec(density, 2)
         if gametocytes is not None:
             out["gametocyte_density_per_ul"] = float(_dec(Decimal(gametocytes) / Decimal(wbc) * Decimal(wbc_per_ul), 2))
+    elif reported is not None and positive:
+        out["density_per_ul"] = _dec(reported, 2)
     elif not positive:
         out["density_per_ul"] = Decimal("0.00")
     return out
@@ -80,12 +86,15 @@ def _thin(values, errors):
     rbc = values.get("rbc_counted")
     infected = values.get("infected_rbc")
     stages = values.get("stages") or []
+    reported = values.get("parasitaemia_reported")  # imported legacy data
 
     if rbc and infected is not None and infected > rbc:
         errors["infected_rbc"] = "Infected RBCs can't be more than RBCs counted."
-    if positive and not infected and not stages:
+    if positive and not infected and not stages and reported is None:
         errors["infected_rbc"] = "A positive slide needs infected RBCs counted or stages recorded."
     if not positive:
+        if reported:
+            errors["parasitaemia_reported"] = "A negative slide can't have a parasitaemia."
         if infected:
             errors["infected_rbc"] = "A negative slide can't have infected RBCs."
         if stages:
@@ -93,6 +102,8 @@ def _thin(values, errors):
 
     if rbc and infected is not None and "infected_rbc" not in errors:
         out["parasitaemia_pct"] = _dec(Decimal(infected) / Decimal(rbc) * 100, 4)
+    elif reported is not None and positive:
+        out["parasitaemia_pct"] = _dec(reported, 4)
     elif not positive:
         out["parasitaemia_pct"] = Decimal("0.0000")
     return out

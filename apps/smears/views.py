@@ -156,6 +156,7 @@ class SlideDetailView(SlideMixin, DetailView):
             )
         context["readings"] = readings
         context["final"] = slide.final
+        context["import_batch"] = slide.import_batches.first()
         context["next_reader"] = access.next_reader_number(slide)
         context["can_add_reading"] = access.can_add_reading(user, slide)
         context["can_edit_slide"] = access.can_edit_slide(user, slide)

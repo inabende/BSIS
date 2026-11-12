@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Import a file – {{ project.code }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Import a file" %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    {% include "imports/_steps.html" with step=1 %}
+    <div class="card"><div class="card-body p-4">
+      <h1 class="h4 mb-1">Upload a file of existing results</h1>
+      <p class="text-muted small">One file = one smear type. Each row should be one slide's result. Nothing is saved until you've checked the rows and confirmed.</p>
+      <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+        {% include "core/_form.html" %}
+        <button class="btn btn-brand" type="submit"><i class="bi bi-arrow-right"></i> Upload and match columns</button>
+        <a class="btn btn-link" href="{% url 'imports:list' project.code %}">Cancel</a>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Match columns – import #{{ batch.pk }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Import: match columns" %}{% endblock %}
+{% block content %}
+{% include "imports/_steps.html" with step=2 %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-1">Match the file's columns</h1>
+    <p class="text-muted small mb-0"><strong>{{ batch.original_name }}</strong> · {{ batch.smear_type.name }} · {{ batch.rows_total }} rows. Matches were guessed from the column names; check them, and pick a column for anything that wasn't found.</p>
+  </div>
+  <form method="post" action="{% url 'imports:cancel' project.code batch.pk %}">{% csrf_token %}
+    <button class="btn btn-outline-secondary btn-sm" type="submit">Cancel import</button>
+  </form>
+</div>
+
+{% if unmapped %}
+<div class="alert alert-light border small py-2"><strong>Columns not used yet:</strong> {{ unmapped|join:", " }}. Columns you don't match are ignored.</div>
+{% endif %}
+
+<form method="post" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="row g-4">
+  {% for group, fields in form.groups %}
+    <div class="col-lg-{% if group == 'Result' %}12{% else %}6{% endif %}">
+      <div class="card h-100"><div class="card-body">
+        <h2 class="h6">{{ group }}</h2>
+        <table class="table table-sm mapping-table mb-0">
+          <thead><tr><th style="width: 32%">In the system</th><th style="width: 34%">Column in your file</th><th>First values in that column</th></tr></thead>
+          <tbody>
+          {% for field in fields %}
+            <tr>
+              <td>
+                {{ field.label }}{% if field.field.target.required %} <span class="text-danger">*</span>{% endif %}
+                {% if field.help_text %}<div class="form-text mt-0">{{ field.help_text }}</div>{% endif %}
+              </td>
+              <td>
+                {{ field }}
+                {% for e in field.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+              </td>
+              <td class="example" data-examples-for="{{ field.auto_id }}"></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div></div>
+    </div>
+  {% endfor %}
+  </div>
+  <div class="d-flex gap-2 mt-4">
+    <button class="btn btn-brand" type="submit"><i class="bi bi-check2-square"></i> Check all rows</button>
+    <span class="small text-muted align-self-center">Nothing is saved yet. You'll see a report of every row first.</span>
+  </div>
+</form>
+{{ examples|json_script:"column-examples" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Show the first values of whichever column is chosen, so wrong matches stand out.
+  (function () {
+    var examples = JSON.parse(document.getElementById("column-examples").textContent);
+    function show(select) {
+      var cell = document.querySelector('[data-examples-for="' + select.id + '"]');
+      if (!cell) return;
+      var values = (examples[select.value] || []).filter(function (v) { return v !== ""; });
+      cell.textContent = select.value ? (values.length ? values.join(" · ") : "(empty)") : "";
+    }
+    document.querySelectorAll(".mapping-table select").forEach(function (select) {
+      show(select);
+      select.addEventListener("change", function () { show(select); });
+    });
+  })();
+</script>
+{% endblock %}

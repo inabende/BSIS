@@ -18,6 +18,9 @@ DT = FieldDefinition.DataType
 
 # Calculated values stored alongside entered ones, with how to label them.
 DERIVED_LABELS = {
+    "density_reported": ("Density as recorded in the imported file", "/µL"),
+    "parasitaemia_reported": ("Parasitaemia as recorded in the imported file", "%"),
+    "original_reader": ("Reader named in the imported file", ""),
     "wbc_per_ul_used": ("WBC/µL used in calculation", "/µL"),
     "gametocyte_density_per_ul": ("Gametocyte density", "/µL"),
     "differential_total": ("Differential total", "%"),

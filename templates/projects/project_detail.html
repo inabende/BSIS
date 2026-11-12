@@ -12,7 +12,8 @@
   <div class="btn-group">
     {% if perms_project.can_manage %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'projects:update' project.code %}"><i class="bi bi-pencil"></i> Edit</a>{% endif %}
     {% if perms_project.can_change_status %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'projects:status' project.code %}"><i class="bi bi-flag"></i> Status</a>{% endif %}
-    {% if perms_project.can_manage %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'qc:settings' project.code %}"><i class="bi bi-sliders"></i> QC settings</a>{% endif %}
+    {% if perms_project.can_manage %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'qc:settings' project.code %}"><i class="bi bi-sliders"></i> QC settings</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'imports:list' project.code %}"><i class="bi bi-upload"></i> Import results</a>{% endif %}
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'projects:history' project.code %}"><i class="bi bi-clock-history"></i> History</a>
   </div>
 </div>

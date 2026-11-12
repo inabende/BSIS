@@ -72,6 +72,7 @@
         <dt>Stain</dt><dd>{{ slide.get_stain_display }}</dd>
         <dt>Prepared</dt><dd>{{ slide.prepared_on|date:"d M Y"|default:"—" }}</dd>
         <dt>Recorded</dt><dd>{{ slide.created_at|date:"d M Y" }}{% if slide.created_by %} by {{ slide.created_by }}{% endif %}</dd>
+        {% if import_batch %}<dt>Source</dt><dd><i class="bi bi-upload"></i> {% if perms_project.can_manage %}<a href="{% url 'imports:preview' project.code import_batch.pk %}">{% endif %}Import #{{ import_batch.pk }}{% if perms_project.can_manage %}</a>{% endif %}: {{ import_batch.original_name }}</dd>{% endif %}
       </dl>
       {% if slide.notes %}<p class="mt-3 mb-0 small">{{ slide.notes|linebreaksbr }}</p>{% endif %}
     </div></div>

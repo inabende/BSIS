@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Import #{{ batch.pk }} – {{ project.code }}{% endblock %}
+{% block breadcrumbs %}{% include "projects/_breadcrumbs.html" with crumb="Import" %}{% endblock %}
+{% block content %}
+{% if batch.status == "imported" %}{% include "imports/_steps.html" with step=4 %}{% else %}{% include "imports/_steps.html" with step=3 %}{% endif %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-1">{% if batch.status == "imported" %}Imported{% elif batch.status == "cancelled" %}Cancelled{% else %}Check before importing{% endif %}: {{ batch.original_name }}</h1>
+    <p class="text-muted small mb-0">Import #{{ batch.pk }} · {{ batch.smear_type.name }} · uploaded by {{ batch.uploaded_by }} on {{ batch.created_at|date:"d M Y, H:i" }}{% if batch.imported_at %} · imported {{ batch.imported_at|date:"d M Y, H:i" }}{% endif %}</p>
+  </div>
+  <div class="btn-group btn-group-sm">
+    {% if batch.status == "checked" %}<a class="btn btn-outline-secondary" href="{% url 'imports:map' project.code batch.pk %}"><i class="bi bi-arrow-left"></i> Change column matches</a>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'imports:file' project.code batch.pk %}"><i class="bi bi-download"></i> Original file</a>
+    {% if error_total or warning_total or skipped %}<a class="btn btn-outline-secondary" href="{% url 'imports:problems' project.code batch.pk %}"><i class="bi bi-filetype-csv"></i> Problem report</a>{% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ batch.rows_total }}</div><div class="stat-label">Rows in file</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value text-success">{% if batch.status == "imported" %}{{ batch.rows_imported }}{% else %}{{ batch.rows_valid }}{% endif %}</div>
+    <div class="stat-label">{% if batch.status == "imported" %}Slides imported{% else %}Ready to import{% endif %}{% if new_participants %} ({{ new_participants }} new participant{{ new_participants|pluralize }}){% endif %}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value {% if error_total %}text-danger{% endif %}">{{ error_total }}</div><div class="stat-label">Rows with problems (left out)</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat-card h-100"><div class="card-body">
+    <div class="stat-value">{{ batch.rows_skipped }}</div><div class="stat-label">Skipped (slide already in the system)</div></div></div></div>
+</div>
+
+{% if batch.status == "checked" %}
+  <div class="card mb-4 border-start border-4 border-primary"><div class="card-body">
+    {% if batch.rows_valid %}
+    <form method="post">{% csrf_token %}
+      <p class="mb-2">Ready to import <strong>{{ batch.rows_valid }}</strong> slide{{ batch.rows_valid|pluralize }}. Each gets a final result straight away (single reader). Imported results still need approving by a reviewer, as usual.</p>
+      {% if error_total %}
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="accept_errors" value="1" id="accept_errors">
+          <label class="form-check-label" for="accept_errors">I understand that the {{ error_total }} row{{ error_total|pluralize }} with problems will <strong>not</strong> be imported. I can fix them in the file and import it again later; rows already imported will be skipped.</label>
+        </div>
+      {% endif %}
+      <button class="btn btn-primary" type="submit"><i class="bi bi-box-arrow-in-down"></i> Import {{ batch.rows_valid }} slide{{ batch.rows_valid|pluralize }}</button>
+    </form>
+    {% else %}
+      <p class="mb-0">No rows are ready to import. Fix the problems below in your file and upload it again, or <a href="{% url 'imports:map' project.code batch.pk %}">change the column matches</a>.</p>
+    {% endif %}
+  </div></div>
+{% endif %}
+
+{% if errors %}
+<div class="card mb-4"><div class="card-body">
+  <h2 class="h6 text-danger"><i class="bi bi-x-octagon"></i> Rows with problems ({{ error_total }}){% if error_total > errors|length %}: first {{ errors|length }} shown; download the problem report for all{% endif %}</h2>
+  <table class="table table-sm mb-0"><thead><tr><th style="width: 6rem">Row</th><th>Problem</th></tr></thead><tbody>
+  {% for e in errors %}<tr><td>{{ e.row }}</td><td>{% for m in e.messages %}<div>{{ m }}</div>{% endfor %}</td></tr>{% endfor %}
+  </tbody></table>
+</div></div>
+{% endif %}
+
+{% if warnings %}
+<div class="card mb-4"><div class="card-body">
+  <h2 class="h6 text-warning-emphasis"><i class="bi bi-exclamation-triangle"></i> Warnings ({{ warning_total }}): these rows will still be imported</h2>
+  <table class="table table-sm mb-0"><thead><tr><th style="width: 6rem">Row</th><th>Note</th></tr></thead><tbody>
+  {% for w in warnings %}<tr><td>{{ w.row }}</td><td>{% for m in w.messages %}<div>{{ m }}</div>{% endfor %}</td></tr>{% endfor %}
+  </tbody></table>
+</div></div>
+{% endif %}
+
+{% if skipped %}
+<div class="card mb-4"><div class="card-body">
+  <h2 class="h6">Skipped rows ({{ batch.rows_skipped }})</h2>
+  <table class="table table-sm mb-0"><tbody>
+  {% for s in skipped %}<tr><td style="width: 6rem">{{ s.row }}</td><td>{{ s.message }}</td></tr>{% endfor %}
+  </tbody></table>
+</div></div>
+{% endif %}
+
+{% if batch.status == "imported" %}
+<div class="card"><div class="card-body">
+  <h2 class="h6">Imported slides{% if batch.rows_imported > imported_slides|length %} (first {{ imported_slides|length }}){% endif %}</h2>
+  {% include "smears/_slide_table.html" with slides=imported_slides show_sample=True %}
+</div></div>
+{% elif preview %}
+<div class="card"><div class="card-body">
+  <h2 class="h6">How the first rows will look</h2>
+  <div class="table-responsive">
+  <table class="table table-sm mb-0">
+    <thead class="table-light"><tr><th>Row</th><th>Participant</th><th>Sample</th><th>Collected</th><th>Slide</th><th>Result</th><th>Species</th><th class="text-end">Density /µL</th><th class="text-end">Parasitaemia %</th><th>Reader</th></tr></thead>
+    <tbody>
+    {% for p in preview %}
+      <tr><td>{{ p.row }}</td><td>{{ p.participant }}</td><td>{{ p.sample }}</td><td class="text-nowrap">{{ p.collected }}</td><td>{{ p.slide }}</td>
+        <td>{{ p.result }}</td><td>{{ p.species }}</td>
+        <td class="text-end">{% if p.density is not None %}{{ p.density|floatformat:"0g" }}{% endif %}</td>
+        <td class="text-end">{% if p.parasitaemia is not None %}{{ p.parasitaemia|floatformat:"-3" }}{% endif %}</td>
+        <td>{{ p.reader }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div></div>
+{% endif %}
+{% endblock %}
